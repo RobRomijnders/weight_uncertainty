@@ -47,8 +47,8 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
-    dl = DataLoaderCIFAR(conf.data_direc_cifar)
+    # dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
+    # dl = DataLoaderCIFAR(conf.data_direc_cifar)
     dl = DataLoaderMNIST(conf.data_direc_mnist)
     do_plot = False
     if do_plot:

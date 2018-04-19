@@ -25,8 +25,8 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
     # standard_dev = tf.log(tf.exp(standard_dev) - 1.0) * tf.ones(shape)
 
     # it's important to initialize variances with care, otherwise the model takes too long to converge
-    rho_max_init = tf.log(tf.exp(prior.sigma_prior / 2.0) - 1.0)
-    rho_min_init = tf.log(tf.exp(prior.sigma_prior / 4.0) - 1.0)
+    rho_max_init = tf.log(tf.exp(prior.sigma_prior / 5.0) - 1.0)
+    rho_min_init = tf.log(tf.exp(prior.sigma_prior / 20.0) - 1.0)
     std_init = tf.random_uniform_initializer(rho_min_init, rho_max_init)
 
     # this is constant, original paper/email is not constant

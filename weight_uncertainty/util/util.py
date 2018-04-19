@@ -30,12 +30,12 @@ def make_train_op(optimizer_name, grads, tvars):
     global_step = tf.train.get_or_create_global_step()
 
     # Get the optimizer for all parameters except the sigmas
-    learning_rate_all = tf.train.exponential_decay(conf.learning_rate, global_step, 1000, 0.9)
+    learning_rate_all = tf.train.exponential_decay(conf.learning_rate, global_step, 1000, 0.99)
     optimizer_all = get_optimizer(optimizer_name)(learning_rate_all)
     tf.summary.scalar("Lr_all", learning_rate_all, family="Learning rates")
 
     # Get the optimizer for all the sigma parameters
-    learning_rate_std = tf.train.exponential_decay(7*conf.learning_rate, global_step, 1000, 0.99)
+    learning_rate_std = tf.train.exponential_decay(10*conf.learning_rate, global_step, 1000, 0.99)
     optimizer_std = get_optimizer(optimizer_name)(learning_rate_std)
     tf.summary.scalar("Lr_std", learning_rate_std, family="Learning rates")
 
