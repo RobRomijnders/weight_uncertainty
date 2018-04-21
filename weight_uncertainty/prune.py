@@ -37,8 +37,8 @@ def main(dataloader):
 
 if __name__ == '__main__':
     # dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
-    # dl = DataLoaderCIFAR(conf.data_direc_cifar)
-    dl = DataLoaderMNIST(conf.data_direc_mnist)
+    dl = DataLoaderCIFAR(conf.data_direc_cifar)
+    # dl = DataLoaderMNIST(conf.data_direc_mnist)
 
     if False:
         plot_ucr(dl.sample('train'))

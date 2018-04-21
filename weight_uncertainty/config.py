@@ -62,6 +62,10 @@ class Config:
         return self.cfg.get('direc', 'restore_direc')
 
     @property
+    def input_direc(self):
+        return self.cfg.get('direc', 'input_direc')
+
+    @property
     def restore_direc_base(self):
         return self.cfg.get('direc', 'restore_direc').rstrip('/').rstrip('save/my-model')
 
