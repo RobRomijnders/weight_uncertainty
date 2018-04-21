@@ -3,6 +3,8 @@ from os.path import join, exists
 from weight_uncertainty import conf
 import pickle
 from mnist import MNIST
+from random import random
+from scipy.ndimage.filters import gaussian_filter
 
 
 def unpickle(file):
@@ -41,7 +43,10 @@ class DataloaderBase:
         N = self.data['X_' + dataset].shape[0]
         ind_N = np.random.choice(N, batch_size, replace=False)
 
-        return self.data['X_' + dataset][ind_N], self.data['y_' + dataset][ind_N]
+        images, labels = self.data['X_' + dataset][ind_N], self.data['y_' + dataset][ind_N]
+        if self.augment:
+            images = self.augment_batch(images)
+        return images, labels
 
 
 class DataloaderUCR(DataloaderBase):
@@ -110,9 +115,10 @@ class DataLoaderCIFAR(DataloaderBase):
 
 
 class DataLoaderMNIST(DataloaderBase):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, augment=False):
         mndata = MNIST(data_dir)
         self.data = {}
+        self.augment = augment
 
         # train data
         images, labels = mndata.load_training()
@@ -155,10 +161,37 @@ class DataLoaderMNIST(DataloaderBase):
         else:
             return (images-mean)/std
 
+    @staticmethod
+    def augment_batch(self, X):
+        assert len(X.shape) == 4,  'we expect a 4D array of [num_images, height, width, num_channels]'
+        if random() > 0.5:
+            return X
+
+        random_num = random()
+        if random_num < 0.33:
+            # shift pixels inner
+            x, y = np.random.randint(0, 3, size=(2,))
+            X_out = np.copy(X)
+            X_out[:, x:, y:] = X[:, :-x, :-y]
+            return X_out
+        elif random_num < 0.66:
+            # shift pixels outer
+            x, y = np.random.randint(0, 3, size=(2,))
+            X_out = np.copy(X)
+            X_out[:, :-x, :-y] = X[:, x:, y:]
+            return X_out
+        else:
+            X_out = np.copy(X)
+            for n in range(X.shape[0]):
+                X_out[n, :, :, 0] = gaussian_filter(X[n, :, :, 0], sigma=1, order=0)
+            return X_out
+
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    from scipy.ndimage.filters import gaussian_filter
     dl = DataLoaderMNIST('/home/rob/Dropbox/ml_projects/bayes_nn/bayes_nn/data/raw')
     x, y = dl.sample()
-    plt.imshow(np.squeeze(x[0]))
+    plt.imshow(np.squeeze(x[0]), cmap='gray')
     plt.show()

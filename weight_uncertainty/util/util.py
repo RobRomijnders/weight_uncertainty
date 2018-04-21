@@ -111,6 +111,8 @@ class RestoredModel():
         return self.sess.run([self.loss, self.accuracy], feed_dict={self.input: x, self.target: y})
 
     def predict(self, x):
+        if len(x.shape) == 3:
+            x = np.expand_dims(x, axis=-1)
         return self.sess.run(self.prediction, feed_dict={self.input: x})
 
     def prune(self, threshold):
