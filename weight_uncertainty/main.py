@@ -49,7 +49,7 @@ def main(dataloader):
 if __name__ == '__main__':
     # dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
     # dl = DataLoaderCIFAR(conf.data_direc_cifar)
-    dl = DataLoaderMNIST(conf.data_direc_mnist)
+    dl = DataLoaderMNIST(conf.data_direc_mnist, augment=True)
     do_plot = False
     if do_plot:
         if dl.is_time_series():

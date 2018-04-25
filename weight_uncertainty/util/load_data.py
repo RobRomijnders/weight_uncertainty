@@ -44,7 +44,7 @@ class DataloaderBase:
         ind_N = np.random.choice(N, batch_size, replace=False)
 
         images, labels = self.data['X_' + dataset][ind_N], self.data['y_' + dataset][ind_N]
-        if self.augment:
+        if self.augment and dataset == 'train':
             images = self.augment_batch(images)
         return images, labels
 
@@ -162,7 +162,7 @@ class DataLoaderMNIST(DataloaderBase):
             return (images-mean)/std
 
     @staticmethod
-    def augment_batch(self, X):
+    def augment_batch(X):
         assert len(X.shape) == 4,  'we expect a 4D array of [num_images, height, width, num_channels]'
         if random() > 0.5:
             return X
@@ -170,13 +170,13 @@ class DataLoaderMNIST(DataloaderBase):
         random_num = random()
         if random_num < 0.33:
             # shift pixels inner
-            x, y = np.random.randint(0, 3, size=(2,))
+            x, y = np.random.randint(1, 5, size=(2,))
             X_out = np.copy(X)
             X_out[:, x:, y:] = X[:, :-x, :-y]
             return X_out
         elif random_num < 0.66:
             # shift pixels outer
-            x, y = np.random.randint(0, 3, size=(2,))
+            x, y = np.random.randint(1, 5, size=(2,))
             X_out = np.copy(X)
             X_out[:, :-x, :-y] = X[:, x:, y:]
             return X_out
@@ -185,7 +185,6 @@ class DataLoaderMNIST(DataloaderBase):
             for n in range(X.shape[0]):
                 X_out[n, :, :, 0] = gaussian_filter(X[n, :, :, 0], sigma=1, order=0)
             return X_out
-
 
 
 if __name__ == '__main__':
