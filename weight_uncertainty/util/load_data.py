@@ -75,11 +75,12 @@ class DataloaderUCR(DataloaderBase):
 
 
 class DataLoaderCIFAR(DataloaderBase):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, augment=False):
         '''Return train_data, train_labels, test_data, test_labels
          The shape of data is 32 x 32 x3'''
         train_data = None
         train_labels = []
+        self.augment = augment
 
         for i in range(1, 6):
             data_dic = unpickle(data_dir + "/data_batch_{}".format(i))

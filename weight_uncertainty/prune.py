@@ -1,6 +1,6 @@
 from weight_uncertainty.util.load_data import DataloaderUCR, DataLoaderCIFAR, DataLoaderMNIST
 import numpy as np
-from weight_uncertainty.util.util_plot import plot_snr_pruning
+from weight_uncertainty.util.util_plot import plot_pruning
 from weight_uncertainty.util.util import RestoredModel
 import tensorflow as tf
 from weight_uncertainty import conf
@@ -14,7 +14,7 @@ def main(dataloader):
         # Loop over thresholds for the standard deviation of the parameters
         # We save the results in the results list
         prune_results = []
-        for t in np.linspace(0., 15., 100):
+        for t in np.linspace(-40, 5, 100):
             prune_ratio = restored_model.prune(t)
 
             # The batchsize is hardcoded, so we run a couple of batches from the validation set and average them
@@ -32,13 +32,13 @@ def main(dataloader):
             prune_results.append((t, prune_ratio, acc_test))
 
         # and the pyplot fun :)
-        plot_snr_pruning(prune_results)
+        plot_pruning(prune_results)
 
 
 if __name__ == '__main__':
     # dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
-    dl = DataLoaderCIFAR(conf.data_direc_cifar)
-    # dl = DataLoaderMNIST(conf.data_direc_mnist)
+    # dl = DataLoaderCIFAR(conf.data_direc_cifar)
+    dl = DataLoaderMNIST(conf.data_direc_mnist)
 
     if False:
         plot_ucr(dl.sample('train'))
