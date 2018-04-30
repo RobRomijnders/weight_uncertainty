@@ -43,7 +43,7 @@ class TSCModel(object):
         # https://arxiv.org/abs/1505.05424
         num_batches = conf.max_steps  # Make explicit that this represents the number of batches
         pi = 1./num_batches
-        pi = 1/100.
+        pi = 1/10.
         total_loss = self.loss + pi*self.kl_loss
 
         # Set up the optimizer

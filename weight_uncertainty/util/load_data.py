@@ -50,9 +50,13 @@ class DataloaderBase:
 
 
 class DataloaderUCR(DataloaderBase):
-    def __init__(self, direc, dataset, ratio=np.array([0.8, 0.9])):
+    def __init__(self, direc, dataset, ratio=np.array([0.8, 0.9]), augment=False):
         data_dir = join(direc, dataset)
         assert exists(data_dir), f'Not found datadir {data_dir}'
+        self.augment = augment
+
+        if isinstance(ratio, (list, tuple)):
+            ratio = np.array(ratio)
 
         data_train = np.loadtxt(join(data_dir, dataset) + '_TRAIN', delimiter=',')
         data_test_val = np.loadtxt(join(data_dir, dataset) + '_TEST', delimiter=',')

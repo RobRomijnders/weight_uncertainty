@@ -6,6 +6,7 @@ from weight_uncertainty import conf
 
 import tensorflow as tf
 from os.path import join
+import time
 
 
 def train(model, dataloader):
@@ -19,7 +20,7 @@ def train(model, dataloader):
                                          model.train_op],
                                         feed_dict={model.x_placeholder: x, model.y_placeholder: y})
 
-            if step % 50 == 0:
+            if step % 100 == 0:
                 print_validation_performance(step, model, dataloader, train_writer, *train_losses)
     finally:
         model.saver.save(sess, join(conf.log_direc, 'save/my-model'))
@@ -47,9 +48,9 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    # dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
+    dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000', ratio=[0.1, 0.5])
     # dl = DataLoaderCIFAR(conf.data_direc_cifar)
-    dl = DataLoaderMNIST(conf.data_direc_mnist, augment=True)
+    # dl = DataLoaderMNIST(conf.data_direc_mnist, augment=True)
     do_plot = False
     if do_plot:
         if dl.is_time_series():
@@ -58,7 +59,12 @@ if __name__ == '__main__':
             import matplotlib.pyplot as plt
             plt.imshow(dl.sample()[0][2])
             plt.show()
-    import time
+
+    # Print data set sizes
+    print(f'train set {dl.data["X_train"].shape[0]}, '
+          f'val set {dl.data["X_val"].shape[0]}, '
+          f'test set {dl.data["X_test"].shape[0]} ')
+
     t1 = time.time()
     main(dl)
-    print(time.time() - t1)
+    print(f'time to run training and plotting {time.time() - t1} seconds')
