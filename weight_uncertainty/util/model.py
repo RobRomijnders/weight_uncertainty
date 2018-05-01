@@ -5,7 +5,7 @@ from weight_uncertainty import conf
 import numpy as np
 
 
-class TSCModel(object):
+class Model(object):
     def __init__(self, num_classes, size_sample):
         # Set up the placeholders
         self.x_placeholder = tf.placeholder(tf.float32, [None] + list(size_sample), name='input')
@@ -87,7 +87,7 @@ class TSCModel(object):
         tf.summary.scalar('Total bits', self.total_bits)
 
         # Add the pruning ops
-        self.add_pruning_snr()
+        self.add_pruning()
 
         # Final Tensorflow bookkeeping
         self.summary_op = tf.summary.merge_all()
@@ -153,6 +153,11 @@ class TSCModel(object):
         return softmaxlayer(outputs)
 
     def add_tensorboard_summaries(self, grads_norm=0.0):
+        """
+        Add some nice summaries for Tensorboard
+        :param grads_norm:
+        :return:
+        """
         # Summaries for TensorBoard
         with tf.name_scope("summaries"):
             tf.summary.scalar("loss", self.loss)
@@ -168,7 +173,14 @@ class TSCModel(object):
                         axis=0)
         tf.summary.histogram('snr', self.all_SNR, family='SNR')
 
-    def add_pruning_snr(self):
+    def add_pruning(self):
+        """
+        Add ops to the graph for pruning the parameters.
+
+        model.prune_op will prune all parameters above a threshold
+        model.prune_ration will summarize what ratio of parameters is kept.
+        :return:
+        """
         self.prune_threshold = tf.placeholder(tf.float32, name='prune_threshold')
 
         prune_op_list = []
@@ -184,6 +196,10 @@ class TSCModel(object):
         self.prune_op = tf.group(prune_op_list, name='prune_op')
 
     def add_to_collections(self):
+        """
+        Add the variables to a collection that we will use when restoring a model
+        :return:
+        """
         for var in [self.x_placeholder,
                     self.y_placeholder,
                     self.predictions,

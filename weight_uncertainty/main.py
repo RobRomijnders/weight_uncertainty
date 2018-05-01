@@ -1,7 +1,7 @@
 from weight_uncertainty.util.load_data import DataloaderUCR, DataLoaderCIFAR, DataLoaderMNIST
 from weight_uncertainty.util.util_plot import plot_all_snr, plot_ucr
 from weight_uncertainty.util.util import print_validation_performance
-from weight_uncertainty.util.model import TSCModel
+from weight_uncertainty.util.model import Model
 from weight_uncertainty import conf
 
 import tensorflow as tf
@@ -28,7 +28,7 @@ def train(model, dataloader):
 
 def main(dataloader):
     with tf.Session() as sess:
-        model = TSCModel(dataloader.num_classes, dataloader.size_sample)
+        model = Model(dataloader.num_classes, dataloader.size_sample)
         sess.run(model.init_op)
 
         do_train = True
