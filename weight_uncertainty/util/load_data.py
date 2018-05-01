@@ -50,9 +50,13 @@ class DataloaderBase:
 
 
 class DataloaderUCR(DataloaderBase):
-    def __init__(self, direc, dataset, ratio=np.array([0.8, 0.9])):
+    def __init__(self, direc, dataset, ratio=np.array([0.8, 0.9]), augment=False):
         data_dir = join(direc, dataset)
         assert exists(data_dir), f'Not found datadir {data_dir}'
+        self.augment = augment
+
+        if isinstance(ratio, (list, tuple)):
+            ratio = np.array(ratio)
 
         data_train = np.loadtxt(join(data_dir, dataset) + '_TRAIN', delimiter=',')
         data_test_val = np.loadtxt(join(data_dir, dataset) + '_TEST', delimiter=',')
@@ -75,11 +79,12 @@ class DataloaderUCR(DataloaderBase):
 
 
 class DataLoaderCIFAR(DataloaderBase):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, augment=False):
         '''Return train_data, train_labels, test_data, test_labels
          The shape of data is 32 x 32 x3'''
         train_data = None
         train_labels = []
+        self.augment = augment
 
         for i in range(1, 6):
             data_dic = unpickle(data_dir + "/data_batch_{}".format(i))

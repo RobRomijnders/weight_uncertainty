@@ -43,7 +43,7 @@ class TSCModel(object):
         # https://arxiv.org/abs/1505.05424
         num_batches = conf.max_steps  # Make explicit that this represents the number of batches
         pi = 1./num_batches
-        pi = 1/100.
+        pi = 1/10.
         total_loss = self.loss + pi*self.kl_loss
 
         # Set up the optimizer
@@ -176,8 +176,8 @@ class TSCModel(object):
         for mean, sigma, mask_ref in zip(tf.get_collection('random_mean'),
                                          tf.get_collection('all_sigma'),
                                          tf.get_collection('masks')):
-            snr = tf.abs(mean)/sigma
-            mask = tf.cast(tf.greater_equal(snr, self.prune_threshold), tf.float32)
+            log_p_zero = -0.5 * tf.square(mean/sigma) - tf.log(tf.sqrt(2*np.pi)*sigma)
+            mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
             mask_ratios.append(tf.reduce_mean(mask))
             prune_op_list.append(tf.assign(mask_ref, mask))
         self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
