@@ -14,11 +14,11 @@ def main(dataloader):
         # Loop over thresholds for the standard deviation of the parameters
         # We save the results in the results list
         prune_results = []
-        for t in np.linspace(-40, 5, 100):
+        for t in np.linspace(-5, 4, 100):
             prune_ratio = restored_model.prune(t)
 
             # The batchsize is hardcoded, so we run a couple of batches from the validation set and average them
-            def test_many(num_val_batches=5):
+            def test_many(num_val_batches):
                 for _ in range(num_val_batches):
                     x, y = dataloader.sample(dataset='val')
                     yield restored_model.evaluate(x, y)
@@ -36,9 +36,9 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    dl = DataloaderUCR(conf.data_direc_ucr, dataset='ECG5000')
-    # dl = DataLoaderCIFAR(conf.data_direc_cifar)
-    # dl = DataLoaderMNIST(conf.data_direc_mnist)
+    # dl = DataloaderUCR(conf.data_direc, dataset='ECG5000')
+    # dl = DataLoaderCIFAR(conf.data_direc)
+    dl = DataLoaderMNIST(conf.data_direc)
 
     if False:
         plot_ucr(dl.sample('train'))

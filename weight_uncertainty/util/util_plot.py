@@ -19,7 +19,7 @@ def plot_all_snr(all_SNR):
 
 def plot_pruning(prune_results):
     prune_data = np.array(prune_results)
-    plt.scatter(prune_data[:, 1], prune_data[:, 2], label='Validation performance')
+    plt.plot(prune_data[:, 1], prune_data[:, 2], 'r', label='Validation performance')
     plt.plot([0.0999, 0.1001], [0.0, 1.0], '-', label='10% boundary')
     plt.xlabel('Prune ratio')
     plt.xlim([0., 1.])

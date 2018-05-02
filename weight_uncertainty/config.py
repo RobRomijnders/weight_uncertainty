@@ -5,11 +5,13 @@ import datetime
 
 
 class Config:
-    def __init__(self):
+    def __init__(self, dataset='UCR'):
         self.cfg = ConfigParser()
 
+        assert dataset in ['ucr', 'cifar', 'mnist'], "Please provide a data set in ['ucr', 'cifar', 'mnist']"
+
         path = os.path.dirname(__file__)
-        config_name = 'development.config.ini'
+        config_name = dataset + '.config.ini'
         config_path = join(path, config_name)
         if os.path.exists(config_path):
             self.cfg.read(config_path)
@@ -38,6 +40,14 @@ class Config:
         return self.cfg.getfloat('default', 'sigma_prior')
 
     @property
+    def sigma_init_low(self):
+        return self.cfg.getfloat('default', 'sigma_init_low')
+
+    @property
+    def sigma_init_high(self):
+        return self.cfg.getfloat('default', 'sigma_init_high')
+
+    @property
     def clip_norm(self):
         return self.cfg.getfloat('default', 'clip_norm')
 
@@ -46,16 +56,8 @@ class Config:
         return self.cfg.get('default', 'optimizer_name')
 
     @property
-    def data_direc_ucr(self):
-        return self.cfg.get('direc', 'data_direc_ucr')
-
-    @property
-    def data_direc_cifar(self):
-        return self.cfg.get('direc', 'data_direc_cifar')
-
-    @property
-    def data_direc_mnist(self):
-        return self.cfg.get('direc', 'data_direc_mnist')
+    def data_direc(self):
+        return self.cfg.get('direc', 'data_direc')
 
     @property
     def restore_direc(self):
@@ -84,69 +86,16 @@ class Config:
     def max_steps(self):
         return self.cfg.getint('default', 'max_steps')
 
+    @property
+    def num_filters(self):
+        return list(map(lambda x: int(x), self.cfg.get('default', 'num_filters').split(',')))
 
-    # @property
-    # def max_steps(self):
-    #     return self.cfg.getint('default', 'max_steps')
-    #
-    # @property
-    # def log_interval(self):
-    #     return self.cfg.getint('default', 'log_interval')
-    #
-    # @property
-    # def num_filters(self):
-    #     return self.cfg.getint('default', 'num_filters')
-    #
-    # @property
-    # def num_fc(self):
-    #     return self.cfg.getint('default', 'num_fc')
-    #
-    # @property
-    # def num_experiments(self):
-    #     return self.cfg.getint('sampling', 'num_experiments')
-    #
-    # @property
-    # def lr(self):
-    #     return self.cfg.getfloat('default', 'lr')
-    #
-    # @property
-    # def momentum(self):
-    #     return self.cfg.getfloat('default', 'momentum')
-    #
-    # @property
-    # def drop_prob(self):
-    #     return self.cfg.getfloat('default', 'drop_prob')
-    #
-    # @property
-    # def weight_decay(self):
-    #     return self.cfg.getfloat('default', 'weight_decay')
-    #
-    # @property
-    # def num_runs(self):
-    #     return self.cfg.getint('sampling', 'num_runs')
-    #
-    # @property
-    # def batch_size_test(self):
-    #     return self.cfg.getint('sampling', 'batch_size_test')
-    #
-    # @property
-    # def experiments(self):
-    #     for exp in self.cfg.get('default', 'experiments').split('|'):
-    #         exp = exp.split(',')
-    #         yield exp[0], exp[1], float(exp[2]), float(exp[3])
-    #
-    # @property
-    # def func2var_name(self):
-    #     for func, var_name, _, _ in self.experiments:
-    #         yield func, var_name
-    #
-    # @property
-    # def burn_in(self):
-    #     return self.cfg.getint('langevin', 'burn_in')
-    #
-    # @property
-    # def sample_every(self):
-    #     return self.cfg.getint('langevin', 'sample_every')
+    def get_filter_shape(self, is_time_series):
+        if is_time_series:
+            return [self.cfg.getint('default', 'filter_size'), 1]
+        else:
+            return [self.cfg.getint('default', 'filter_size'), self.cfg.getint('default', 'filter_size')]
+
 
 
 def _find_base_dir(base_path, config):

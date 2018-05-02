@@ -42,7 +42,7 @@ class Model(object):
         # Weight uncertainty in neural networks
         # https://arxiv.org/abs/1505.05424
         num_batches = conf.max_steps  # Make explicit that this represents the number of batches
-        pi = 1./num_batches
+        # pi = 1./num_batches
         pi = 1/10.
         total_loss = self.loss + pi*self.kl_loss
 
@@ -121,23 +121,23 @@ class Model(object):
         else:
             inputs = self.x_placeholder
 
-        filter_shape = [6, 1] if self.is_time_series else [6, 6]
+        filter_shape = conf.get_filter_shape(self.is_time_series)
 
         # First layer
-        conv_layer1 = BayesianConvCell('conv1', num_filters=80, filter_shape=filter_shape, stride=3, prior=self.prior,
+        conv_layer1 = BayesianConvCell('conv1', num_filters=conf.num_filters[0], filter_shape=filter_shape, stride=3, prior=self.prior,
                                          activation=tf.nn.selu)
         hidden1 = conv_layer1(inputs)
         self.layers.append(conv_layer1)
         tf.summary.histogram('Layer1', hidden1, family='activations')
 
         # Second layer
-        conv_layer2 = BayesianConvCell('conv2', num_filters=80, filter_shape=filter_shape, stride=3, prior=self.prior,
+        conv_layer2 = BayesianConvCell('conv2', num_filters=conf.num_filters[1], filter_shape=filter_shape, stride=3, prior=self.prior,
                                          activation=tf.nn.selu)
         hidden2 = conv_layer2(hidden1)
         self.layers.append(conv_layer2)
 
         # Third layer
-        conv_layer3 = BayesianConvCell('conv3', num_filters=80, filter_shape=filter_shape, stride=3, prior=self.prior,
+        conv_layer3 = BayesianConvCell('conv3', num_filters=conf.num_filters[2], filter_shape=filter_shape, stride=3, prior=self.prior,
                                          activation=tf.nn.selu)
         hidden3 = conv_layer3(hidden2)
         self.layers.append(conv_layer3)
