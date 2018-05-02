@@ -10,6 +10,7 @@ setup(name='weight_uncertainty',
       install_requires=[
           'numpy',
           'matplotlib',
+          'python-mnist'
       ],
       packages=find_packages(exclude=('tests')),
       zip_safe=False)

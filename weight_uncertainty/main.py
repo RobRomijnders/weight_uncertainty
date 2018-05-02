@@ -1,4 +1,4 @@
-from weight_uncertainty.util.load_data import DataloaderUCR, DataLoaderCIFAR, DataLoaderMNIST
+from weight_uncertainty.util.load_data import Dataloader
 from weight_uncertainty.util.util_plot import plot_all_snr, plot_ucr
 from weight_uncertainty.util.util import print_validation_performance
 from weight_uncertainty.util.model import Model
@@ -50,7 +50,7 @@ def main(dataloader):
 if __name__ == '__main__':
     # dl = DataloaderUCR(conf.data_direc, dataset='ECG5000', ratio=[0.1, 0.5])
     # dl = DataLoaderCIFAR(conf.data_direc)
-    dl = DataLoaderMNIST(conf.data_direc, augment=True)
+    dl = Dataloader()
     do_plot = False
     if do_plot:
         if dl.is_time_series():

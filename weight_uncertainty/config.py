@@ -9,6 +9,7 @@ class Config:
         self.cfg = ConfigParser()
 
         assert dataset in ['ucr', 'cifar', 'mnist'], "Please provide a data set in ['ucr', 'cifar', 'mnist']"
+        self.dataset = dataset
 
         path = os.path.dirname(__file__)
         config_name = dataset + '.config.ini'
