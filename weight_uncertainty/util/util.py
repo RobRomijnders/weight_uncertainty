@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import os
 from weight_uncertainty import conf
 
 
@@ -117,3 +118,47 @@ class RestoredModel():
 
     def prune(self, threshold):
         return self.sess.run([self.prune_op, self.prune_ratio], {self.prune_threshold: threshold})[1]
+
+
+def maybe_make_dir(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+
+def reduce_entropy(X, axis=-1):
+    return -1 * np.sum(X * np.log(X+1E-12), axis=axis)
+
+
+def calc_risk(preds, labels=None, weights=None):
+    """
+    Calculates the parameters we can possibly use to examine risk of a neural net
+
+    :param preds:
+    :param labels:
+    :param weights: weights for the weighted MC estimate
+    :return:
+    """
+    if isinstance(preds, list):
+        preds = np.stack(preds)
+    # preds in shape [num_runs, num_batch, num_classes]
+    num_runs, num_batch = preds.shape[:2]
+
+    if weights is not None:
+        assert weights.shape[0] == num_runs
+        weights *= num_runs/np.sum(weights)  # Make the weights sum to num_runs
+        preds *= np.expand_dims(np.expand_dims(weights, axis=1), axis=2)
+
+    ave_preds = np.mean(preds, 0)
+    pred_class = np.argmax(ave_preds, 1)
+
+    # entropy = np.mean(-1 * np.sum(preds * np.log(preds+1E-12), axis=-1), axis=0)
+    entropy = reduce_entropy(ave_preds, -1)  # entropy of the posterior predictive
+    entropy_exp = np.mean(reduce_entropy(preds, -1), axis=0)  # Expected entropy of the predictive under the parameter posterior
+    mutual_info = entropy - entropy_exp  # Equation 2 of https://arxiv.org/pdf/1711.08244.pdf
+    variance = np.std(preds[:, range(num_batch), pred_class], 0)
+    ave_softmax = np.mean(preds[:, range(num_batch), pred_class], 0)
+    if labels is not None:
+        correct = np.equal(pred_class, labels)
+    else:
+        correct = None
+    return entropy, mutual_info, variance, ave_softmax, correct

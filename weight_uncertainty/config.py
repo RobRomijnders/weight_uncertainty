@@ -69,8 +69,8 @@ class Config:
         return self.cfg.get('direc', 'input_direc')
 
     @property
-    def restore_direc_base(self):
-        return self.cfg.get('direc', 'restore_direc').rstrip('/').rstrip('save/my-model')
+    def restore_direc(self):
+        return self.cfg.get('direc', 'restore_direc')
 
     @property
     def log_direc(self):
@@ -96,6 +96,25 @@ class Config:
             return [self.cfg.getint('default', 'filter_size'), 1]
         else:
             return [self.cfg.getint('default', 'filter_size'), self.cfg.getint('default', 'filter_size')]
+
+    @property
+    def func2var_name(self):
+        for func, var_name, _, _ in self.experiments:
+            yield func, var_name
+
+    @property
+    def num_runs(self):
+        return self.cfg.getint('sampling', 'num_runs')
+
+    @property
+    def num_experiments(self):
+        return self.cfg.getint('sampling', 'num_experiments')
+
+    @property
+    def experiments(self):
+        for exp in self.cfg.get('default', 'experiments').split('|'):
+            exp = exp.split(',')
+            yield exp[0], exp[1], float(exp[2]), float(exp[3])
 
 
 
