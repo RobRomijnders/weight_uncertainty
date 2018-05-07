@@ -20,7 +20,7 @@ def main(dataloader):
     im_test, lbl_test = dataloader.sample('test')
 
     # Double check if it has sensible performance
-    lbl_pred = model.predict(im_test)
+    lbl_pred, _ = model.predict(im_test)
     print(f'Accuracy is {np.mean(np.equal(lbl_test, np.argmax(lbl_pred, axis=1)))}')
 
     # Explore increasing added noise
@@ -35,9 +35,7 @@ def main(dataloader):
             mutilated_images = mutilation_function(np.copy(im_test), mutilated_value)
 
             # Now get the samples from the predictive distribution
-            preds = []  # Accumulator for the predictions
-            for run in range(5 * conf.num_runs):
-                preds.append(model.predict(mutilated_images))
+            preds = model.sample_prediction(mutilated_images, conf.num_runs)
 
             entropy, mutual_info, variance, softmax_val, correct = calc_risk(preds, lbl_test)
             risks.append(
