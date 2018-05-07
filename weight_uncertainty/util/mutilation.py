@@ -6,6 +6,19 @@ To use the mutilation function, define it in `development.config.ini` in the [DE
 
 from PIL import Image
 import numpy as np
+from weight_uncertainty.util.load_data import normalize
+from weight_uncertainty import conf
+
+
+def rotate_cifar(images, angle):
+    images_out = np.zeros_like(images)
+
+    for n in range(images.shape[0]):
+        imarray = normalize(images[n], reverse=True)
+        im = Image.fromarray(imarray.astype(np.uint8), mode='RGB')
+        im = im.rotate(-1 * angle)
+        images_out[n] = normalize(np.array(im))
+    return images_out
 
 
 def rotation(images, angle):
@@ -15,6 +28,8 @@ def rotation(images, angle):
     :param angle:
     :return: numpy array
     """
+    if conf.dataset == 'cifar':
+        return rotate_cifar(images, angle)
     images_out = np.zeros_like(images)
     # Check if there is a dimension of unit size
     try:

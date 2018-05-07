@@ -111,10 +111,39 @@ class RestoredModel():
     def evaluate(self, x, y):
         return self.sess.run([self.loss, self.accuracy], feed_dict={self.input: x, self.target: y})
 
-    def predict(self, x):
+    def sample_prediction(self, x, num_runs=None):
+        """
+        returns num_runs prediction made with samples from the parameter posterior
+        :param x:
+        :param num_runs:
+        :return:
+        """
+        # For images, we require 4D inputs
         if len(x.shape) == 3:
             x = np.expand_dims(x, axis=-1)
-        return self.sess.run(self.prediction, feed_dict={self.input: x})
+
+        if num_runs is None:
+            num_runs = conf.num_runs
+
+        # Iterator for the predictions
+        def make_predictions(input):
+            for _ in range(num_runs):
+                yield self.sess.run(self.prediction, feed_dict={self.input: input})
+
+        # Stack all predictions over the first axis
+        return np.stack(make_predictions(x), axis=0)
+
+    def predict(self, x):
+        """
+        Calculates the average prediction and the uncertainty
+        :param x:
+        :return:
+        """
+        predictions = self.sample_prediction(x)
+
+        ave_pred = np.mean(predictions, axis=0)
+        risks = calc_risk(predictions)
+        return ave_pred, risks[0]
 
     def prune(self, threshold):
         return self.sess.run([self.prune_op, self.prune_ratio], {self.prune_threshold: threshold})[1]
@@ -133,7 +162,7 @@ def calc_risk(preds, labels=None, weights=None):
     """
     Calculates the parameters we can possibly use to examine risk of a neural net
 
-    :param preds:
+    :param preds: preds in shape [num_runs, num_batch, num_classes]
     :param labels:
     :param weights: weights for the weighted MC estimate
     :return:

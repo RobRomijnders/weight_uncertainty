@@ -92,9 +92,9 @@ def load_cifar():
     ind = np.random.permutation(N)
 
     data = dict()
-    data['X_train'] = (train_data[ind[:ratio]].astype(np.float32) - 120.) / 64.
-    data['X_val'] = (train_data[ind[ratio:]].astype(np.float32) - 120.) / 64.
-    data['X_test'] = (test_data.astype(np.float32) - 120.) / 64.
+    data['X_train'] = normalize(train_data[ind[:ratio]].astype(np.float32))
+    data['X_val'] = normalize(train_data[ind[ratio:]].astype(np.float32))
+    data['X_test'] = normalize(test_data.astype(np.float32))
     # Targets have labels 1-indexed. We subtract one for 0-indexed
     data['y_train'] = train_labels[ind[:ratio]]
     data['y_val'] = train_labels[ind[ratio:]]
@@ -201,6 +201,15 @@ class Dataloader:
                 X_out[n, :, :, 0] = gaussian_filter(X[n, :, :, 0], sigma=1, order=0)
             return X_out
 
+
+def normalize(data, reverse=False):
+    if conf.dataset == 'cifar':
+        if reverse:
+            return data * 64. + 120.
+        else:
+            return (data - 120.)/64.
+    else:
+        assert False
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
