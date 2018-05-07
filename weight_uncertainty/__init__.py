@@ -1,3 +1,3 @@
 from weight_uncertainty.config import Config
 
-conf = Config('mnist')
+conf = Config('cifar')

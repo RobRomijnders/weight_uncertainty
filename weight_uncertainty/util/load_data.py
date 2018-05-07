@@ -19,22 +19,6 @@ def unpickle(file):
 
 
 def load_mnist():
-    def normalize(images, reverse=False):
-        """
-        Normalize the images with fixed values
-        :param images:
-        :param reverse:
-        :return:
-        """
-        mean = 33
-        std = 78
-
-        conf.range = ((0-33)/78, (255-33)/78)
-        if reverse:
-            return images*std + mean
-        else:
-            return (images-mean)/std
-
     mndata = MNIST(conf.data_direc)
     data = {}
 
@@ -208,6 +192,11 @@ def normalize(data, reverse=False):
             return data * 64. + 120.
         else:
             return (data - 120.)/64.
+    elif conf.dataset == 'mnist':
+        if reverse:
+            return data * 78. + 33.
+        else:
+            return (data - 33.) / 78.
     else:
         assert False
 

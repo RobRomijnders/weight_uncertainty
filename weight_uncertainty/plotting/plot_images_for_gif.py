@@ -34,9 +34,11 @@ for mutilation, var_name, _, _ in conf.experiments:
             color = 'g' if risks[num_experiment, 5, batch_count].astype(np.bool) else 'r'
             axarr[num_row, 0].set_title('Entropy %5.3f' % risks[num_experiment, 1, batch_count], color=color)
 
-            axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 1, batch_count], cmap='coolwarm', vmin=0.0, vmax=1.6)
+            axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 1, batch_count],
+                                     cmap='coolwarm', vmin=0.0, vmax=1.6)
             axarr[num_row, 1].set_title(f'Entropy {risks[num_experiment, 1, batch_count]:7.2f}')
-            axarr[num_row, 2].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count], cmap='coolwarm', vmin=0.0, vmax=1.6)
+            axarr[num_row, 2].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count],
+                                     cmap='coolwarm', vmin=0.0, vmax=1.6)
             axarr[num_row, 2].set_title(f'Mutual information{risks[num_experiment, 2, batch_count]:7.3f}')
             batch_count += 1
 
@@ -54,4 +56,3 @@ for mutilation, var_name, _, _ in conf.experiments:
     print('Also make GIF')
     subprocess.call(['convert', '-delay', '40', '-loop', '0', '*.png', f'{mutilation}_uncertain.gif'],
                     cwd=output_dir)
-
