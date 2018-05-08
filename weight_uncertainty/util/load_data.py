@@ -19,6 +19,10 @@ def unpickle(file):
 
 
 def load_mnist():
+    """
+    Load the MNIST data set
+    :return:
+    """
     mndata = MNIST(conf.data_direc)
     data = {}
 
@@ -27,7 +31,7 @@ def load_mnist():
     images = np.reshape(normalize(np.array(images)), newshape=[-1, 28, 28, 1])
     labels = np.array(labels).astype(np.int64)
 
-    # Split the train data
+    # Split the train data into a train and val set
     N = images.shape[0]
     ratio = int(0.8 * N)
     ind = np.random.permutation(N)
@@ -70,7 +74,7 @@ def load_cifar():
     test_data = test_data.reshape((len(test_data), 3, 32, 32))
     test_data = np.rollaxis(test_data, 1, 4)
 
-    # Split the train data
+    # Split the train data into a train and val set
     N = train_data.shape[0]
     ratio = int(0.8 * N)
     ind = np.random.permutation(N)
@@ -86,32 +90,26 @@ def load_cifar():
     return data
 
 
-def load_ucr(dataset_subname='ECG5000', ratio=[0.8, 0.9]):
+def load_ucr(dataset_subname='ECG5000'):
     data_dir = join(conf.data_direc, dataset_subname)
     assert exists(data_dir), f'Not found datadir {data_dir}'
 
-    if isinstance(ratio, (list, tuple)):
-        ratio = np.array(ratio)
+    data = np.loadtxt(join(data_dir, dataset_subname) + '_TRAIN', delimiter=',')
+    data_test = np.loadtxt(join(data_dir, dataset_subname) + '_TEST', delimiter=',')
 
-    data_train = np.loadtxt(join(data_dir, dataset_subname) + '_TRAIN', delimiter=',')
-    data_test_val = np.loadtxt(join(data_dir, dataset_subname) + '_TEST', delimiter=',')
+    N = data.shape[0]
 
-    DATA = np.concatenate((data_train, data_test_val), axis=0)
-    N = DATA.shape[0]
-    conf.num_samples = N
-
-    # TODO DROP this subsampling !!!
-    ratio = (ratio * N).astype(np.int32)
+    ratio = int(0.8 * N)
     ind = np.random.permutation(N)
 
     data = dict()
-    data['X_train'] = DATA[ind[:ratio[0]], 1:]
-    data['X_val'] = DATA[ind[ratio[0]:ratio[1]], 1:]
-    data['X_test'] = DATA[ind[ratio[1]:], 1:]
+    data['X_train'] = data[ind[:ratio], 1:]
+    data['X_val'] = data[ind[ratio:], 1:]
+    data['X_test'] = data_test[:, 1:]
     # Targets have labels 1-indexed. We subtract one for 0-indexed
-    data['y_train'] = DATA[ind[:ratio[0]], 0] - 1
-    data['y_val'] = DATA[ind[ratio[0]:ratio[1]], 0] - 1
-    data['y_test'] = DATA[ind[ratio[1]:], 0] - 1
+    data['y_train'] = data[ind[:ratio], 0] - 1
+    data['y_val'] = data[ind[ratio:], 0] - 1
+    data['y_test'] = data_test[:, 0] - 1
     return data
 
 
@@ -180,6 +178,7 @@ class Dataloader:
             X_out[:, :-x, :-y] = X[:, x:, y:]
             return X_out
         else:
+            # Apply a Gaussian blur
             X_out = np.copy(X)
             for n in range(X.shape[0]):
                 X_out[n, :, :, 0] = gaussian_filter(X[n, :, :, 0], sigma=1, order=0)
@@ -199,10 +198,3 @@ def normalize(data, reverse=False):
             return (data - 33.) / 78.
     else:
         assert False
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    dl = Dataloader()
-    x, y = dl.sample()
-    plt.imshow(np.squeeze(x[0]), cmap='gray')
-    plt.show()

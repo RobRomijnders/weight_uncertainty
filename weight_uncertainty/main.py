@@ -3,16 +3,14 @@ from weight_uncertainty.util.util_plot import plot_all_snr, plot_ucr
 from weight_uncertainty.util.util import print_validation_performance
 from weight_uncertainty.util.model import Model
 from weight_uncertainty import conf
-
 import tensorflow as tf
 from os.path import join
-import time
 
 
 def train(model, dataloader):
     sess = tf.get_default_session()
     train_writer = tf.summary.FileWriter(conf.log_direc)
-    try:
+    try:  # To try-finally, in case we run into a NaN error or when we make keyboard interrupt
         for step in range(conf.max_steps):
             x, y = dataloader.sample()
             *train_losses, _ = sess.run([model.loss,
@@ -20,7 +18,7 @@ def train(model, dataloader):
                                          model.train_op],
                                         feed_dict={model.x_placeholder: x, model.y_placeholder: y})
 
-            if step % 100 == 0:
+            if step % 100 == 0:  # every 100 steps, print performances
                 print_validation_performance(step, model, dataloader, train_writer, *train_losses)
     finally:
         model.saver.save(sess, join(conf.log_direc, 'save/my-model'))
@@ -28,11 +26,12 @@ def train(model, dataloader):
 
 def main(dataloader):
     with tf.Session() as sess:
+        # Make a model
         model = Model(dataloader.num_classes, dataloader.size_sample)
         sess.run(model.init_op)
 
         do_train = True
-        if do_train:  # Set to false if you only want to plot the SNR's
+        if do_train:  # Set to false if you only want to plot the p_zero's
             print('Start training')
             train(model, dataloader)
         else:
@@ -42,29 +41,16 @@ def main(dataloader):
                                                          feed_dict={model.x_placeholder: x, model.y_placeholder: y})
             print(f'For testing, loss {loss_test:5.3f} kl loss {kl_loss_test:5.3f} and accuracy {acc_test:5.3f}')
 
-        # Plot a histrogram of all the SNR's
-        all_snr = sess.run(model.all_SNR)
-        plot_all_snr(all_snr)
-
 
 if __name__ == '__main__':
-    # dl = DataloaderUCR(conf.data_direc, dataset='ECG5000', ratio=[0.1, 0.5])
-    # dl = DataLoaderCIFAR(conf.data_direc)
     dl = Dataloader(augment=True)
     do_plot = False
-    if do_plot:
-        if dl.is_time_series():
+    if do_plot and dl.is_time_series():
             plot_ucr(dl.sample('train'))
-        else:
-            import matplotlib.pyplot as plt
-            plt.imshow(dl.sample()[0][2])
-            plt.show()
 
     # Print data set sizes
     print(f'train set {dl.data["X_train"].shape[0]}, '
           f'val set {dl.data["X_val"].shape[0]}, '
           f'test set {dl.data["X_test"].shape[0]} ')
 
-    t1 = time.time()
     main(dl)
-    print(f'time to run training and plotting {time.time() - t1} seconds')
