@@ -105,11 +105,26 @@ class RestoredModel():
             saver.restore(self.sess, model_name)
 
             # Set all the ops:
-            self.input, self.target, self.prediction, self.loss, self.accuracy, \
-                self.prune_op, self.prune_threshold, self.prune_ratio = tf.get_collection('restore_vars')
+            self.input, self.target, self.prediction, self.loss, self.accuracy = tf.get_collection('restore_vars')
+
+            # Add pruning nodes
+            self.prune_threshold = tf.placeholder(tf.float32, name='prune_threshold')
+            prune_op_list = []
+            mask_ratios = []
+            for mean, sigma, mask_ref in zip(tf.get_collection('random_mean'),
+                                             tf.get_collection('all_sigma'),
+                                             tf.get_collection('masks')):
+                log_p_zero = -0.5 * tf.square(mean / sigma) - tf.log(tf.sqrt(2 * np.pi) * sigma)
+                mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
+                mask_ratios.append(tf.reduce_mean(mask))
+                prune_op_list.append(tf.assign(mask_ref, mask))
+            self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
+            self.prune_op = tf.group(prune_op_list, name='prune_op')
 
     def evaluate(self, x, y):
-        return self.sess.run([self.loss, self.accuracy], feed_dict={self.input: x, self.target: y})
+        pred, risk = self.predict(x)
+        acc = np.mean(np.equal(y, np.argmax(pred, axis=-1)))
+        return acc
 
     def sample_prediction(self, x, num_runs=None):
         """
@@ -147,6 +162,7 @@ class RestoredModel():
 
     def prune(self, threshold):
         return self.sess.run([self.prune_op, self.prune_ratio], {self.prune_threshold: threshold})[1]
+
 
 
 def maybe_make_dir(dirname):

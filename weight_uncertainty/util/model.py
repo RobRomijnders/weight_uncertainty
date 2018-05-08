@@ -43,7 +43,7 @@ class Model(object):
         # https://arxiv.org/abs/1505.05424
         num_batches = conf.max_steps  # Make explicit that this represents the number of batches
         # pi = 1./num_batches
-        pi = 1/10.
+        pi = ramp_and_clip(1/1000., 1/10., 3000, 20000, global_step=None)
         total_loss = self.loss + pi*self.kl_loss
 
         # Set up the optimizer
@@ -85,9 +85,6 @@ class Model(object):
         # Total bits is the -log of the average standard deviation
         self.total_bits = -tf.log(self.total_bits/float(len(sigma_collection))) / tf.log(2.)
         tf.summary.scalar('Total bits', self.total_bits)
-
-        # Add the pruning ops
-        self.add_pruning()
 
         # Final Tensorflow bookkeeping
         self.summary_op = tf.summary.merge_all()
@@ -173,28 +170,6 @@ class Model(object):
                         axis=0)
         tf.summary.histogram('snr', self.all_SNR, family='SNR')
 
-    def add_pruning(self):
-        """
-        Add ops to the graph for pruning the parameters.
-
-        model.prune_op will prune all parameters above a threshold
-        model.prune_ration will summarize what ratio of parameters is kept.
-        :return:
-        """
-        self.prune_threshold = tf.placeholder(tf.float32, name='prune_threshold')
-
-        prune_op_list = []
-        mask_ratios = []
-        for mean, sigma, mask_ref in zip(tf.get_collection('random_mean'),
-                                         tf.get_collection('all_sigma'),
-                                         tf.get_collection('masks')):
-            log_p_zero = -0.5 * tf.square(mean/sigma) - tf.log(tf.sqrt(2*np.pi)*sigma)
-            mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
-            mask_ratios.append(tf.reduce_mean(mask))
-            prune_op_list.append(tf.assign(mask_ref, mask))
-        self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
-        self.prune_op = tf.group(prune_op_list, name='prune_op')
-
     def add_to_collections(self):
         """
         Add the variables to a collection that we will use when restoring a model
@@ -204,8 +179,15 @@ class Model(object):
                     self.y_placeholder,
                     self.predictions,
                     self.loss,
-                    self.accuracy,
-                    self.prune_op,
-                    self.prune_threshold,
-                    self.prune_ratio]:
+                    self.accuracy]:
             tf.add_to_collection('restore_vars', var)
+
+
+def ramp_and_clip(value_start, value_stop, step_start, step_stop, global_step=None):
+    if not global_step:
+        global_step = tf.train.get_or_create_global_step()
+    pi = value_start + (value_stop - value_start) * \
+           tf.clip_by_value(1. / (step_stop- step_start) *
+                            (tf.cast(global_step, tf.float32) - step_start), 0., 1.)
+    tf.summary.scalar('pi', pi, family='summaries')
+    return pi
