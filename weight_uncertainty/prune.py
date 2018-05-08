@@ -1,22 +1,24 @@
 from weight_uncertainty.util.load_data import Dataloader
-import numpy as np
 from weight_uncertainty.util.util_plot import plot_pruning
 from weight_uncertainty.util.util import RestoredModel
-import tensorflow as tf
 from weight_uncertainty import conf
+
+import tensorflow as tf
+import numpy as np
 
 
 def main(dataloader):
-    with tf.Session() as sess:
+    with tf.Session():
         # Load our model
         restored_model = RestoredModel(conf.restore_direc)
 
-        # Loop over thresholds for the standard deviation of the parameters
         # We save the results in the results list
         prune_results = []
         count = 0
         prune_ratio = 1.0
         threshold = 4.
+
+        # Loop over thresholds for the p_zero
         while prune_ratio > 0.08 and count < 300:
             prune_ratio = restored_model.prune(threshold)
 
@@ -42,12 +44,7 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    # dl = DataloaderUCR(conf.data_direc, dataset='ECG5000')
-    # dl = DataLoaderCIFAR(conf.data_direc)
     dl = Dataloader()
-
-    if False:
-        plot_ucr(dl.sample('train'))
     main(dl)
 
 
