@@ -1,7 +1,8 @@
 from weight_uncertainty.util.util import MixturePrior, make_train_op
 from weight_uncertainty.util.util_layers import BayesianLSTMCell, BayesianConvCell, SoftmaxLayer
-import tensorflow as tf
 from weight_uncertainty import conf
+
+import tensorflow as tf
 import numpy as np
 
 
@@ -41,8 +42,9 @@ class Model(object):
         # See equation 9 in
         # Weight uncertainty in neural networks
         # https://arxiv.org/abs/1505.05424
-        num_batches = conf.max_steps  # Make explicit that this represents the number of batches
         # pi = 1./num_batches
+        # Both the Weight uncertainty paper and "Practical Variational Inference for Neural Networks" recommend to
+        # anneal pi during training. I found that ramping up works best
         pi = ramp_and_clip(1/1000., 1/10., 3000, 20000, global_step=None)
         total_loss = self.loss + pi*self.kl_loss
 
@@ -53,17 +55,6 @@ class Model(object):
 
         # Clip the gradients if desired
         grads = tf.gradients(total_loss, tvars)
-        # for grad, tvar in zip(grads, tvars):
-        #     name = str(tvar.name).replace(':', '_')
-        #     if 'mask' in name:
-        #         continue
-        #
-        #     tf.summary.histogram(name + '_var', tvar)
-        #     try:
-        #         tf.summary.histogram(name + '_grad', grad)
-        #     except ValueError as e:
-        #         print(name)
-        #         raise Exception(e)
         if conf.clip_norm > 0.0:
             grads, grads_norm = tf.clip_by_global_norm(grads, conf.clip_norm)
         else:
@@ -75,6 +66,7 @@ class Model(object):
         decisions = tf.argmax(logits, axis=1, output_type=tf.int32)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(decisions, self.y_placeholder), tf.float32), name='accuracy')
 
+        # Add summaries for tensorboard if desired
         self.add_tensorboard_summaries(grads_norm)
 
         # Calculate total number of bits
@@ -86,7 +78,7 @@ class Model(object):
         self.total_bits = -tf.log(self.total_bits/float(len(sigma_collection))) / tf.log(2.)
         tf.summary.scalar('Total bits', self.total_bits)
 
-        # Final Tensorflow bookkeeping
+        # Finally some Tensorflow bookkeeping
         self.summary_op = tf.summary.merge_all()
         self.saver = tf.train.Saver()
         self.init_op = tf.global_variables_initializer()
@@ -95,6 +87,7 @@ class Model(object):
         print('Finished model')
 
     def add_RNN(self):
+        # TODO check if this code still works ???
         inputs = tf.unstack(tf.expand_dims(self.x_placeholder, axis=1), axis=2)
         # Stack many BayesianLSTMCells
         # Note that by this call, the epsilon is equal for all time steps
@@ -114,6 +107,7 @@ class Model(object):
 
     def add_CNN(self):
         if self.is_time_series:
+            # We will still use 2D convolutions for time series. So we expand dims
             inputs = tf.expand_dims(tf.expand_dims(self.x_placeholder, axis=2), axis=3)
         else:
             inputs = self.x_placeholder
@@ -139,12 +133,18 @@ class Model(object):
         hidden3 = conv_layer3(hidden2)
         self.layers.append(conv_layer3)
 
+        # Some final reshaping
         h3_shape = hidden3.shape
         outputs = tf.reshape(hidden3, shape=[-1, h3_shape[1:].num_elements()])
         return outputs
 
     def softmax_layer(self, outputs, num_classes):
-        # Final output mapping to num_classes
+        """
+        Takes the outputs of a neural network and maps it to num_classes neurons
+        :param outputs:
+        :param num_classes:
+        :return:
+        """
         softmaxlayer = SoftmaxLayer(num_classes, self.prior)
         self.layers.append(softmaxlayer)
         return softmaxlayer(outputs)
@@ -173,6 +173,8 @@ class Model(object):
     def add_to_collections(self):
         """
         Add the variables to a collection that we will use when restoring a model
+
+        TENSORFLOW MAGIC ...
         :return:
         """
         for var in [self.x_placeholder,
@@ -184,10 +186,25 @@ class Model(object):
 
 
 def ramp_and_clip(value_start, value_stop, step_start, step_stop, global_step=None):
+    """
+    Utility function to clip ramping coefficients
+
+    Before step_start, return value_start
+    Between step_start and step_stop, ramp up to value_stop
+    After step_stop, return value_stop
+    :param value_start:
+    :param value_stop:
+    :param step_start:
+    :param step_stop:
+    :param global_step:
+    :return:
+    """
     if not global_step:
         global_step = tf.train.get_or_create_global_step()
     pi = value_start + (value_stop - value_start) * \
            tf.clip_by_value(1. / (step_stop- step_start) *
                             (tf.cast(global_step, tf.float32) - step_start), 0., 1.)
+
+    # And add a summary to tensorboard
     tf.summary.scalar('pi', pi, family='summaries')
     return pi
