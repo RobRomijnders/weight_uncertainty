@@ -6,7 +6,7 @@ from weight_uncertainty import conf
 
 def get_optimizer(name):
     """
-    Helper function to get the optimizer
+    Helper function to get the optimizer: either SGD or ADAM
     :param name:
     :return:
     """
@@ -23,6 +23,8 @@ def make_train_op(optimizer_name, grads, tvars):
     Make a train op.
 
     This specifically adds different learning rate schedules for the sigmas and for all other parameters
+
+    Specifically, we want a higher learning rate for the sigma's
     :param optimizer_name:
     :param grads:
     :param tvars:
@@ -94,7 +96,7 @@ def print_validation_performance(step, model, dataloader, train_writer, loss_tra
           f'and total bits {total_bits:6.3f}')
 
 
-class RestoredModel():
+class RestoredModel:
     def __init__(self, model_name):
         # Create local graph and use it in the session
         self.graph = tf.Graph()
@@ -117,11 +119,17 @@ class RestoredModel():
                 log_p_zero = -0.5 * tf.square(mean / sigma) - tf.log(tf.sqrt(2 * np.pi) * sigma)
                 mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
                 mask_ratios.append(tf.reduce_mean(mask))
-                prune_op_list.append(tf.assign(mask_ref, mask))
+                prune_op_list.append(tf.assign(mask_ref, mask))  # The assign op sets the parameters to zero
             self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
             self.prune_op = tf.group(prune_op_list, name='prune_op')
 
     def evaluate(self, x, y):
+        """
+        Evaluate classification accuracy
+        :param x:
+        :param y:
+        :return:
+        """
         pred, risk = self.predict(x)
         acc = np.mean(np.equal(y, np.argmax(pred, axis=-1)))
         return acc
@@ -141,9 +149,9 @@ class RestoredModel():
             num_runs = conf.num_runs
 
         # Iterator for the predictions
-        def make_predictions(input):
+        def make_predictions(input_tensor):
             for _ in range(num_runs):
-                yield self.sess.run(self.prediction, feed_dict={self.input: input})
+                yield self.sess.run(self.prediction, feed_dict={self.input: input_tensor})
 
         # Stack all predictions over the first axis
         return np.stack(make_predictions(x), axis=0)
@@ -164,23 +172,27 @@ class RestoredModel():
         return self.sess.run([self.prune_op, self.prune_ratio], {self.prune_threshold: threshold})[1]
 
 
-
 def maybe_make_dir(dirname):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
 
 def reduce_entropy(X, axis=-1):
+    """
+    calculate the entropy over axis and reduce that axis
+    :param X:
+    :param axis:
+    :return:
+    """
     return -1 * np.sum(X * np.log(X+1E-12), axis=axis)
 
 
-def calc_risk(preds, labels=None, weights=None):
+def calc_risk(preds, labels=None):
     """
     Calculates the parameters we can possibly use to examine risk of a neural net
 
     :param preds: preds in shape [num_runs, num_batch, num_classes]
     :param labels:
-    :param weights: weights for the weighted MC estimate
     :return:
     """
     if isinstance(preds, list):
@@ -188,20 +200,21 @@ def calc_risk(preds, labels=None, weights=None):
     # preds in shape [num_runs, num_batch, num_classes]
     num_runs, num_batch = preds.shape[:2]
 
-    if weights is not None:
-        assert weights.shape[0] == num_runs
-        weights *= num_runs/np.sum(weights)  # Make the weights sum to num_runs
-        preds *= np.expand_dims(np.expand_dims(weights, axis=1), axis=2)
-
     ave_preds = np.mean(preds, 0)
     pred_class = np.argmax(ave_preds, 1)
 
-    # entropy = np.mean(-1 * np.sum(preds * np.log(preds+1E-12), axis=-1), axis=0)
-    entropy = reduce_entropy(ave_preds, -1)  # entropy of the posterior predictive
-    entropy_exp = np.mean(reduce_entropy(preds, -1), axis=0)  # Expected entropy of the predictive under the parameter posterior
+    # entropy of the posterior predictive
+    entropy = reduce_entropy(ave_preds, -1)
+
+    # Expected entropy of the predictive under the parameter posterior
+    entropy_exp = np.mean(reduce_entropy(preds, -1), axis=0)
     mutual_info = entropy - entropy_exp  # Equation 2 of https://arxiv.org/pdf/1711.08244.pdf
+
+    # Average and variance of softmax for the predicted class
     variance = np.std(preds[:, range(num_batch), pred_class], 0)
     ave_softmax = np.mean(preds[:, range(num_batch), pred_class], 0)
+
+    # And calculate accuracy if we know the labels
     if labels is not None:
         correct = np.equal(pred_class, labels)
     else:
