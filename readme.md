@@ -50,9 +50,9 @@ Remember that the loss function for the true posterior was:
 
 Now let us name our approximation <img alt="$q(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/68d98207e0a01db0b474b8cf789ab914.svg?invert_in_darkmode" align=middle width="32.8053pt" height="24.56552999999997pt"/>, then our new loss function is:
 
-<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i (\frac{\mu_i}{\sigma_i})^2 + log(\sigma_i) +\sigma_i^{-2} + constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/13033632a4da3583256dd22e1b6781c1.svg?invert_in_darkmode" align=middle width="541.401795pt" height="28.839689999999997pt"/>
+<img alt="$loss = classification \ loss + \sum_i  \frac{1}{2}\lambda\mu^2 - \log\sigma_i + \frac{1}{2} \lambda\sigma^2 + constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/4bec59300983a8f13a76de9aff3699d0.svg?invert_in_darkmode" align=middle width="468.854595pt" height="27.720329999999983pt"/>
 
-Actually, our new loss function seems remarkably similar to the old loss function, except for the <img alt="$log(\sigma_i) +\sigma_i^{-2}$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/3c9cfadb06e9a5c0ae3c32f6b19595d3.svg?invert_in_darkmode" align=middle width="95.872755pt" height="28.839689999999997pt"/>. One could consider that the *loss function* for the standard deviations.
+Actually, our new loss function seems remarkably similar to the old loss function, except for the <img alt="$\frac{1}{2}\lambda\sigma^2 - \log \sigma$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/5d911faa1558935a5941410cdd0c0c38.svg?invert_in_darkmode" align=middle width="89.36234999999999pt" height="27.720329999999983pt"/>. One could consider that the *loss function* for the standard deviations.
 
 At PyData, we love python. So let's write this out in python.
 
@@ -82,14 +82,112 @@ while not converged:
   approximation = update(approximation, w_grad)
 ```
 
-I made a separate document to explain in a formal sense why this new loss function works for approximation the parameter posterior. Please read it at your own risk :) You can read, use and enjoy this entire repository without ever reading it. 
+I made a separate document in [/docs/](https://github.com/RobRomijnders/weight_uncertainty/blob/master/docs/explaining_var_inf_fact_norm.pdf) to explain in a formal sense why this new loss function works for approximation the parameter posterior. Please read it at your own risk :) You can read, use and enjoy this entire repository without ever reading it. 
 
+# Making predictions with uncertainty
+Now that we have a posterior, let's use it to make predictions and get uncertainties. What we want to know is the probability for an output class, given the input. We would get that like so
 
+<img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
 
-# Pruning
+It would take forever to integrate over all possible parameters. (Remember that neural networks have millions of parameters, so computing that integral requires integrating over millions of real dimensions). Fortunately, we can easily sample parameters and use it to approximate the integral. Again, we love python at PyData, so let's write some python:
+
+```python
+def sample_prediction(input):
+    for _ in range(num_samples):
+        w = approximation.sample()  
+        yield model.predict(input, w)
+prediction = np.mean(sample_prediction(input))
+
+``` 
+??? TODO ??? add corresponding code reference
+
+What does this code do?
+
+  * For many times, we sample a parameter vector from our approximation. We use the sampled parameter vector to make a prediction
+  * The approximation of our predictive distribution <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is the average of all the sampled predictions. 
+
+In this project, we work with classification. Therefore, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is a vector of `num_classes` dimension. Each entry in the vector tells the probability that the input belongs to that class.
+
+For example, if our classification problem concerns cats, dogs and cows. Then `prediction[1]` tells the probability that in input is a dog.
+
+### Getting the uncertainty
+
+How do we get **one** number that tells us the uncertainty of our prediction? We have a full posterior predictive distribution, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/>. We want one number that quantifies the uncertainty. 
+
+There are many choices for this one number to summarize the uncertainty
+
+  * Use the predicted probability `prediction[i]`
+  * Use the variance in the predicted probabilities `np.var(sample_prediction(input))[i]`
+  * Use the variation ratio `np.mean(np.argmax(sample_prediction(input),axis=1))`
+  * Use the predictive entropy `entropy(prediction)`
+  * Use the mutual information between parameters and labels `entropy(prediction) - np.mean(entropy(sample_predictions(input),axis=1))`
+
+If you are interested in comparing these uncertainty quantifiers, [this paper](https://arxiv.org/pdf/1803.08533.pdf) compares them. 
+
+What we really care about is which uncertainty quantifier makes us robust againt adversarial attacks. Fortunately, the authors of [this paper](https://arxiv.org/pdf/1711.08244.pdf) compare the uncertainty quantifiers when under adversarial attacks. They conclude that both the variation ratio, predictive entropy and the mutual information increase for adversarial inputs. I care about simplicity, so I will use the predictive entropy in the rest of the project.
+
+# How to prune the parameters?
+Now let's answer how to prune the parameters. We have neural network with millions of weights. We want to drop many of them or at least zero them out. The question we face is the following: *which parameters should we drop first?*. 
+
+Intuitively, we drop the parameters first that is least useful. For example, if a parameter has a high posterior probability of being zero, we might as well drop it. Conversely, if a parameter has a low posterior probability of being zero, we want to keep it. We follow this intuition as we prune parameters: 1) we pick a threshold for the zero probability and 2) we sweep over all the parameters and drop the ones whose probability at zero is above the threshold. 
+
+Again, PyData loves python, so let's write some python
+
+```python
+for param, mu, sigma in approximation():
+    zero_probability = normal.pdf(mu, sigma, 0.0)
+    if zero_probability > threshold:
+        model.drop(param)
+```
+For the corresponding code in the project, see: `utils/model.Model.pruning()`
 
 # Experiments and results
+For the experiments, we run the Bayesian neural network on three data set:
 
+  * First, we want an easy data set that everyone understands. Therefore, we pick MNIST
+  * Second, we want an application that many people care about: image classification. Therefore, we pick [CIFAR10](https://www.cs.toronto.edu/~kriz/cifar.html). It is also more applicable than MNIST
+  * Third, we want a time series data set, as it is a common application of neural networks. We also want to show that Bayesian neural networks do not overfit. Therefore, we pick the ECG5000 data set from [UCR archive](http://www.cs.ucr.edu/~eamonn/time_series_data/). The train set contains only 500 time series, so we know that a conventional neural network would overfit.
+
+For each data set, we care about the following experiments
+
+  * How does the pruning curve look like? Do we remain performance as we drop the parameters?
+  * What do examples of certain and uncertain inputs look like? Does uncertainty increase for noisy inputs?
+
+To this end, we have three plots per data set:
+
+  * __A pruning curve__: the horizontal axis changes the portion of weights being dropped. The vertical axis indicates the validation performance. We expect that the validation performance remains good when less than 90% of the parameters are dropped. (That is also the title of the PyData talk)
+  * __Examples of inputs__: we randomly sample some images from the validation set and we mutilate them by either adding noise or rotating them. As mutilation increases, we expect the uncertainty to increase too.
+  * __Uncertainty curves__: we dive further in our uncertainty numbers and our expectation that they increase for more mutilation. For each mutilation, we plot the uncertainty number as a function of mutilation value (like the energy of the noise or the angle of rotation). This plot will confirm on aggregate level that uncertainty increases for more mutilation.
+
+### MNIST
+Pruning curve
+![pruning_curve_mnist](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/mnist_pruning_curve.png?raw=true)
+
+Examples with noise
+![mnist_noise](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/mnist/noise/noise_uncertain.gif?raw=true)
+
+Examples with rotation
+![mnist_rotation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/mnist/rotation/rotation_uncertain.gif?raw=true)
+
+Uncertainty curve
+![mnist_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/mnist_uncertainty_curve.png?raw=true)
+
+### CIFAR10
+
+### MNIST
+Pruning curve
+![pruning_curve_cifar](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/cifar_pruning_curve.png?raw=true)
+
+Examples with noise
+![cifar_noise](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/cifar/noise/noise_uncertain.gif?raw=true)
+
+Examples with rotation
+![cifar_rotation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/cifar/rotation/rotation_uncertain.gif?raw=true)
+
+Uncertainty curve
+![cifar_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/cifar_uncertainty_curve.png?raw=true)
+
+### ECG5000
 
 
 # Further reading
@@ -98,7 +196,13 @@ I made a separate document to explain in a formal sense why this new loss functi
     * The paper builds on an older paper [Practical Variational Inference for Neural Networks(2011)](https://papers.nips.cc/paper/4329-practical-variational-inference-for-neural-networks)
       * and that paper builds on an even older paper [Keeping the neural networks simple by minimizing the description length of the weights (1993)](https://dl.acm.org/citation.cfm?id=168306)
   * Also this paper gives another view variational inference for neural networks [Bayesian Compression for Deep Learning (2017)](https://arxiv.org/abs/1705.08665)
+  * Speed comparisons of pruned neural networks [Here](https://arxiv.org/abs/1705.08665)
+  * Corner stone thesis on [Bayesian neural networks by Radford Neal (1995)](https://www.cs.toronto.edu/~radford/ftp/thesis.ps)
   * For more fundamental reading on variational inference:
     * Chapter 21 on Variational Inference of [Machine learning: a probabilistic perspective](https://www.cs.ubc.ca/~murphyk/MLbook/)
     * Chapter 10 on Approximate Inference of [Pattern recognition and machine learning](https://www.springer.com/gp/book/9780387310732)
     * Chapter 33 on Variational Methods of [Information theory, inference and learning algorithms](http://www.inference.org.uk/itila/book.html)
+  * [This paper](https://arxiv.org/pdf/1703.02910v1.pdf) uses Bayesian Neural networks for active learning. They show that querying with the uncertainty from a Bayesian Neural Network reaches higher performance faster.
+  * Two papers discuss the uncertainty quantifiers for Bayesian neural networks
+    * [This paper](https://arxiv.org/pdf/1803.08533.pdf) describes the differences between the uncertainty quantifiers
+    * [This paper](https://arxiv.org/pdf/1711.08244.pdf) compares the uncertainty quantifiers for adversarial and out-of-distribution inputs
