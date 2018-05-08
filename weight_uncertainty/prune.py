@@ -34,7 +34,7 @@ def main(dataloader):
                   f' and accuracy {acc_test:5.3f}')
             prune_results.append((threshold, prune_ratio, acc_test))
 
-            threshold -= 0.5
+            threshold -= 0.1
             count += 1
 
         # and the pyplot fun :)
