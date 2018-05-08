@@ -47,6 +47,8 @@ def rotation(images, angle):
         if unit_dim:
             im = np.expand_dims(np.array(im), axis=unit_dim-1)
         images_out[n] = im
+    # TODO maybe play with affine transform
+    # Image.fromarray(normalize(images[3], reverse=True)).transform((28, 28), Image.AFFINE, data=(1, 2, 0, 0, 1.9, 0)).show()
     return images_out
 
 
