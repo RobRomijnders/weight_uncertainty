@@ -16,7 +16,7 @@ def main(dataloader):
         prune_results = []
         count = 0
         prune_ratio = 1.0
-        threshold = 4.
+        threshold = 1.5
 
         # Loop over thresholds for the p_zero
         while prune_ratio > 0.08 and count < 300:
@@ -36,7 +36,7 @@ def main(dataloader):
                   f' and accuracy {acc_test:5.3f}')
             prune_results.append((threshold, prune_ratio, acc_test))
 
-            threshold -= 0.1
+            threshold -= 0.2
             count += 1
 
         # and the pyplot fun :)

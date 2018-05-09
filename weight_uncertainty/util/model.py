@@ -45,7 +45,7 @@ class Model(object):
         # pi = 1./num_batches
         # Both the Weight uncertainty paper and "Practical Variational Inference for Neural Networks" recommend to
         # anneal pi during training. I found that ramping up works best
-        pi = ramp_and_clip(1/1000., 1/10., 3000, 20000, global_step=None)
+        pi = ramp_and_clip(1/10000., 1/100., 3000, 20000, global_step=None)
         total_loss = self.loss + pi*self.kl_loss
 
         # Set up the optimizer

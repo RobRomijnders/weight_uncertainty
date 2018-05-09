@@ -43,7 +43,7 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    dl = Dataloader(augment=True)
+    dl = Dataloader(augment=False)
     do_plot = False
     if do_plot and dl.is_time_series():
             plot_ucr(dl.sample('train'))
