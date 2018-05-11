@@ -39,7 +39,8 @@ def make_train_op(optimizer_name, grads, tvars):
 
     # Get the optimizer for all the sigma parameters
     learning_rate_std = tf.train.exponential_decay(10*conf.learning_rate, global_step, 1000, 0.99)
-    optimizer_std = get_optimizer(optimizer_name)(learning_rate_std)
+    first_epoch = tf.cast(tf.greater_equal(global_step, 1000), tf.float32)  # No learning on sigmas in first epoch or so
+    optimizer_std = get_optimizer(optimizer_name)(learning_rate_std*first_epoch)
     tf.summary.scalar("Lr_std", learning_rate_std, family="Learning rates")
 
     # Sort the gradients
@@ -54,7 +55,30 @@ def make_train_op(optimizer_name, grads, tvars):
     # Only update the global step in one of the apply_gradient() calls, otherwise there are two increments per step
     train_op = tf.group(optimizer_all.apply_gradients(grad_tvar_all, global_step=global_step),
                         optimizer_std.apply_gradients(grad_tvar_std))
+
+    # if optimizer_name == 'adam':
+    #     plot_grad_tensorboard([(optimizer_all, grad_tvar_all), (optimizer_std, grad_tvar_std)])
     return train_op
+
+
+def plot_grad_tensorboard(input_list):
+    """
+    VERY EXPERIMENTAL FUNCTION. PLEASE IGNORE
+
+    it is inspired on Information Theory of Deep learning by Naftali Tishby
+    :param input_list:
+    :return:
+    """
+    for optimizer, grad_tvar_list in input_list:
+        for _, tvar in grad_tvar_list:
+            first = optimizer.get_slot(tvar, 'm')
+            second = optimizer.get_slot(tvar, 'v')
+            if first and second:
+                first_unbiased = first / (1. - optimizer._beta1_t)
+                second_unbiased = second / (1. - optimizer._beta2_t)
+                var = second_unbiased - tf.square(first_unbiased)
+                log_snr = tf.reduce_mean(tf.log(1E-9 + tf.div(tf.square(first_unbiased), var)))
+                tf.summary.scalar(tvar.name, log_snr, family='log_snr of grad')
 
 
 class MixturePrior(object):
@@ -93,7 +117,7 @@ def print_validation_performance(step, model, dataloader, train_writer, loss_tra
 
     print(f'At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:6.3f}/{loss_val:6.3f}'
           f'KL loss {kl_loss_train:6.3f}/{kl_loss_val:6.3f} and val accuracy {acc_val:6.3f} '
-          f'and total bits {total_bits:6.3f}')
+          f'and total bits {total_bits:15.1f}')
 
 
 class RestoredModel:

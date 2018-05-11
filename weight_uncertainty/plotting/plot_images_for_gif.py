@@ -20,7 +20,7 @@ for mutilation, var_name, _, _ in conf.experiments:
 
     num_experiments, num_batch = images.shape[:2]
 
-    num_rows = 4
+    num_rows = 8
 
     for num_experiment in range(num_experiments):
         # if num_experiment > 2: break
@@ -39,10 +39,10 @@ for mutilation, var_name, _, _ in conf.experiments:
             axarr[num_row, 0].set_title('Entropy %5.3f' % risks[num_experiment, 1, batch_count], color=color)
 
             axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 1, batch_count],
-                                     cmap='coolwarm', vmin=0.0, vmax=1.0)
+                                     cmap='coolwarm', vmin=0.5, vmax=1.5)
             axarr[num_row, 1].set_title(f'Entropy {risks[num_experiment, 1, batch_count]:7.2f}')
             axarr[num_row, 2].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count],
-                                     cmap='coolwarm', vmin=0.0, vmax=1.0)
+                                     cmap='coolwarm', vmin=0., vmax=1.1)
             axarr[num_row, 2].set_title(f'Mutual information{risks[num_experiment, 2, batch_count]:7.3f}')
             batch_count += 1
 

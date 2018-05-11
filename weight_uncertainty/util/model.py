@@ -72,10 +72,9 @@ class Model(object):
         # Calculate total number of bits
         self.total_bits = tf.constant(0.0, dtype=tf.float32)
         sigma_collection = tf.get_collection('all_sigma')
-        for var in sigma_collection:
-            self.total_bits += tf.reduce_mean(var)
-        # Total bits is the -log of the average standard deviation
-        self.total_bits = -tf.log(self.total_bits/float(len(sigma_collection))) / tf.log(2.)
+        for sigm in sigma_collection:
+            self.total_bits += tf.reduce_sum(tf.log(sigm) / tf.log(2.))
+        self.total_bits = tf.identity(self.total_bits, "total_bits")
         tf.summary.scalar('Total bits', self.total_bits)
 
         # Finally some Tensorflow bookkeeping
