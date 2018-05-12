@@ -6,17 +6,6 @@ import matplotlib.style as style
 style.use('fivethirtyeight')
 
 
-def plot_all_snr(all_SNR):
-    if isinstance(all_SNR, list):
-        all_SNR = np.concatenate([array.flatten() for array in all_SNR])
-
-    plt.hist(all_SNR, bins=500)
-    plt.xlabel('value of SNR')
-    plt.ylabel('Bincount')
-    plt.savefig(join(conf.log_direc, 'hist_all_snr.png'))
-    plt.show()
-
-
 def plot_pruning(prune_results):
     prune_data = np.array(prune_results)
     plt.plot(prune_data[:, 1], prune_data[:, 2], 'r', label='Validation performance')

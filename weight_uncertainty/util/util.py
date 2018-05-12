@@ -87,7 +87,7 @@ class MixturePrior(object):
         Set up a scale mixture prior according to section 3.3 in
         Weight uncertainty of neural networks
         https://arxiv.org/abs/1505.05424
-        :param log_sigma_prior:
+        :param sigma_prior:
         """
         self.mean = 0
         self.sigma_prior = sigma_prior
@@ -103,6 +103,16 @@ class MixturePrior(object):
 
 
 def print_validation_performance(step, model, dataloader, train_writer, loss_train, kl_loss_train):
+    """
+    Lots of printing and logging
+    :param step:
+    :param model:
+    :param dataloader:
+    :param train_writer:
+    :param loss_train:
+    :param kl_loss_train:
+    :return:
+    """
     sess = tf.get_default_session()
     x, y = dataloader.sample('val')
     feed_dict = {model.x_placeholder: x, model.y_placeholder: y}
@@ -141,17 +151,19 @@ class RestoredModel:
                                              tf.get_collection('all_sigma'),
                                              tf.get_collection('masks')):
                 log_p_zero = -0.5 * tf.square(mean / sigma) - tf.log(tf.sqrt(2 * np.pi) * sigma)
+                # The mask is zero when the posterior probability is greater than threshold
                 mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
                 mask_ratios.append(tf.reduce_mean(mask))
                 prune_op_list.append(tf.assign(mask_ref, mask))  # The assign op sets the parameters to zero
+            # Log the pruning ratio as it is a result of the threshold
             self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
             self.prune_op = tf.group(prune_op_list, name='prune_op')
 
     def evaluate(self, x, y):
         """
         Evaluate classification accuracy
-        :param x:
-        :param y:
+        :param x: input tensor
+        :param y: ground truth
         :return:
         """
         pred, risk = self.predict(x)
@@ -183,7 +195,7 @@ class RestoredModel:
     def predict(self, x):
         """
         Calculates the average prediction and the uncertainty
-        :param x:
+        :param x: input tensor
         :return:
         """
         predictions = self.sample_prediction(x)

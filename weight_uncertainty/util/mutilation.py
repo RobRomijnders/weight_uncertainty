@@ -1,9 +1,8 @@
 """
 This file contains all the mutilation functions that will be used for the experiments.
 
-To use the mutilation function, define it in `development.config.ini` in the [DEFAULT] section
+To use the mutilation function, define it in `*.config.ini` in the [DEFAULT] section
 """
-
 from PIL import Image
 import numpy as np
 from weight_uncertainty.util.load_data import normalize
@@ -11,6 +10,12 @@ from weight_uncertainty import conf
 
 
 def rotate_cifar(images, angle):
+    """
+    Special function to rotate cifar images as they are RGB
+    :param images:
+    :param angle:
+    :return:
+    """
     images_out = np.zeros_like(images)
 
     for n in range(images.shape[0]):
@@ -47,8 +52,6 @@ def rotation(images, angle):
         if unit_dim:
             im = np.expand_dims(np.array(im), axis=unit_dim-1)
         images_out[n] = im
-    # TODO maybe play with affine transform
-    # Image.fromarray(normalize(images[3], reverse=True)).transform((28, 28), Image.AFFINE, data=(1, 2, 0, 0, 1.9, 0)).show()
     return images_out
 
 
@@ -61,8 +64,10 @@ def noise_clip(images, sigma):
     images += np.clip(sigma * np.random.randn(*images.shape), *conf.range)
     return images
 
-
+##########################################################################################################
 # SUPER UGLY AND REPEATING CODE
+
+
 def warp_cifar(images, warp_value):
     # TODO merge this function with rotate_cifar()
     images_out = np.zeros_like(images)

@@ -18,6 +18,15 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
     """
     A wrapper around tf.get_variable which lets you get a "variable" which is
      explicitly a sample from a normal distribution.
+
+
+    Code source: https://github.com/DeNeutoy/bayesian-rnn/
+    :param name:
+    :param prior:
+    :param shape:
+    :param prior_mean:
+    :param dtype:
+    :return:
     """
 
     # Inverse of a softplus function, so that the value of the standard deviation
@@ -30,13 +39,13 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
     rho_min_init = tf.log(tf.exp(prior.sigma_prior / conf.sigma_init_low) - 1.0)
     std_init = tf.random_uniform_initializer(rho_min_init, rho_max_init)
 
-    # this is constant, original paper/email is not constant
-    # initializer=tf.constant_initializer(mean)
+    # Initialize the mean
     mean = tf.get_variable(name + "_mean", shape,
                            dtype=dtype)
     tf.add_to_collection('random_mean', mean)
     mean += prior_mean
 
+    # Initialize the standard deviation
     standard_deviation = tf.get_variable(name + "_standard_deviation", shape,
                                          initializer=std_init,
                                          dtype=dtype)
@@ -46,7 +55,7 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
     tf.add_to_collection('all_sigma', standard_deviation)
     tf.summary.scalar(name + '_sigma', tf.reduce_mean(standard_deviation), family='sigma')
 
-    # Do the masking in case of pruning
+    # Prepare masking tensors in case we want to prune
     mask = tf.get_variable(name + '_mask', shape=shape, initializer=tf.ones_initializer)
     tf.add_to_collection('masks', mask)
 
@@ -57,6 +66,11 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
 
 class SoftmaxLayer:
     def __init__(self, num_classes, prior):
+        """
+        Final linear layer that maps any input to a tensor of [batch_size x num_classes]
+        :param num_classes:
+        :param prior:
+        """
         self.num_classes = num_classes
         self.prior = prior
 
@@ -66,6 +80,11 @@ class SoftmaxLayer:
         return theta_kl
 
     def __call__(self, inputs):
+        """
+        Final linear layer that maps any input to a tensor of [batch_size x num_classes]
+        :param inputs:
+        :return:
+        """
         tf.assert_rank(inputs, 2)
         out_dim = inputs.shape[1]
         self.softmax_w, self.softmax_w_mu, self.softmax_w_std = get_random_normal_variable("softmax_w", self.prior,
@@ -76,6 +95,9 @@ class SoftmaxLayer:
                                                                             dtype=tf.float32)
 
         logits = tf.matmul(inputs, self.softmax_w) + self.softmax_b
+
+        # Add kl losses to the collection
+        tf.add_to_collection('kl_losses', self.get_kl())
         return logits
 
 
@@ -109,7 +131,11 @@ class BayesianConvCell:
                                                                        shape=[self.num_filters])
 
         vert_stride = 1 if 1 in self.filter_shape else self.stride
-        act = conv2d(inputs, filter=self.W, strides=[1, self.stride, vert_stride, 1], padding='SAME', data_format='NHWC') + self.b
+        act = conv2d(inputs, filter=self.W, strides=[1, self.stride, vert_stride, 1],
+                     padding='SAME', data_format='NHWC') + self.b
+
+        # Add kl losses to the collection
+        tf.add_to_collection('kl_losses', self.get_kl())
         return self.activation(act)
 
 
@@ -239,7 +265,7 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
                 c, h = state
             else:
                 one = constant_op.constant(1, dtype=dtypes.int32)
-                c, h = array_ops.split(value=state, num_or_size_splits=2, axis=one) # tf.split(state, 2, axis=1
+                c, h = array_ops.split(value=state, num_or_size_splits=2, axis=one)  # tf.split(state, 2, axis=1
             concat = self.stochastic_linear([inputs, h], 4 * self._num_units, True)
 
             # i = input_gate, j = new_input, f = forget_gate, o = output_gate

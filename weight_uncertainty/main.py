@@ -1,5 +1,5 @@
 from weight_uncertainty.util.load_data import Dataloader
-from weight_uncertainty.util.util_plot import plot_all_snr, plot_ucr
+from weight_uncertainty.util.util_plot import plot_ucr
 from weight_uncertainty.util.util import print_validation_performance
 from weight_uncertainty.util.model import Model
 from weight_uncertainty import conf
@@ -8,6 +8,7 @@ from os.path import join
 
 
 def train(model, dataloader):
+    # Some tensorflow initializations
     sess = tf.get_default_session()
     train_writer = tf.summary.FileWriter(conf.log_direc)
     try:  # To try-finally, in case we run into a NaN error or when we make keyboard interrupt
@@ -44,6 +45,8 @@ def main(dataloader):
 
 if __name__ == '__main__':
     dl = Dataloader(augment=False)
+
+    # Maybe make some plots of ucr data
     do_plot = False
     if do_plot and dl.is_time_series():
             plot_ucr(dl.sample('train'))

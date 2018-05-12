@@ -7,24 +7,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 from weight_uncertainty.util.util import calc_risk
 
+"""
+Simple code to read some images and plot a prediction and its uncertainties
+"""
+
 
 def read_images():
     for png in glob(join(conf.input_direc, 'input*.png')):
         print(png)
-        im = Image.open(png).convert('L')
-        yield (np.array(im).astype(np.float32)-33)/78
+        image = Image.open(png).convert('L')
+        yield (np.array(image).astype(np.float32)-33)/78
 
 
 batch = np.array(list(read_images()))
 num_images = batch.shape[0]
 
+# Restore the model
 model = RestoredModel(conf.restore_direc)
 
+# Make a prediction
 pred = model.sample_prediction(batch, 50)
 entropy, mutual_info, sm_var, sm_value, _ = calc_risk(pred)
 decision = np.argmax(np.mean(pred, axis=0), axis=-1)
 
-
+# The rest is pyplot magic
 f, axarr = plt.subplots(num_images, 3)
 
 for n, im in enumerate(batch):

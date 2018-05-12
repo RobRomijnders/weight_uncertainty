@@ -91,6 +91,10 @@ class Config:
     def num_filters(self):
         return list(map(lambda x: int(x), self.cfg.get('default', 'num_filters').split(',')))
 
+    @property
+    def stride(self):
+        return self.cfg.getint('default', 'stride')
+
     def get_filter_shape(self, is_time_series):
         if is_time_series:
             return [self.cfg.getint('default', 'filter_size'), 1]

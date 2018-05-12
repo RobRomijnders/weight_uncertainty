@@ -94,21 +94,21 @@ def load_ucr(dataset_subname='ECG5000'):
     data_dir = join(conf.data_direc, dataset_subname)
     assert exists(data_dir), f'Not found datadir {data_dir}'
 
-    data = np.loadtxt(join(data_dir, dataset_subname) + '_TRAIN', delimiter=',')
+    data_train = np.loadtxt(join(data_dir, dataset_subname) + '_TRAIN', delimiter=',')
     data_test = np.loadtxt(join(data_dir, dataset_subname) + '_TEST', delimiter=',')
 
-    N = data.shape[0]
+    N = data_train.shape[0]
 
     ratio = int(0.8 * N)
     ind = np.random.permutation(N)
 
     data = dict()
-    data['X_train'] = data[ind[:ratio], 1:]
-    data['X_val'] = data[ind[ratio:], 1:]
+    data['X_train'] = data_train[ind[:ratio], 1:]
+    data['X_val'] = data_train[ind[ratio:], 1:]
     data['X_test'] = data_test[:, 1:]
     # Targets have labels 1-indexed. We subtract one for 0-indexed
-    data['y_train'] = data[ind[:ratio], 0] - 1
-    data['y_val'] = data[ind[ratio:], 0] - 1
+    data['y_train'] = data_train[ind[:ratio], 0] - 1
+    data['y_val'] = data_train[ind[ratio:], 0] - 1
     data['y_test'] = data_test[:, 0] - 1
     return data
 
@@ -124,6 +124,8 @@ class Dataloader:
             self.data = load_ucr()
         else:
             assert False
+
+        conf.num_samples = self.data['X_train'].shape[0]
 
     @property
     def num_classes(self):
