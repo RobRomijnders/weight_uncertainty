@@ -1,31 +1,36 @@
 This repository is under heavy development. Please use at own risk. I plan to finish it before PyData on May 25th.
 
 # Introduction
-This repository implements Bayesian inference on a deep neural network. The repository also serves as notes for my talk at PyData Amsterdam 2018 **Bayesian Deep Learning with 10 % of the weights** 
+The code in this repository implements Bayesian inference on a deep neural network. The repository also serves as notes for my talk at PyData Amsterdam 2018 **Bayesian Deep Learning with 10 % of the weights** 
 
 # Motivation
-Conventional neural networks suffer from two problems
+Conventional neural networks suffer from two problems, which motivate this repository:
 
   * Conventional neural networks give no **uncertainty** on their predictions. 
     * This is detrimental for critical applications. For example, if a neural network diagnoses you with a disease, wouldn't you want to know how certain it is of that diagnosis?
-    * This also makes neural networks susceptible to adversarial attacks. In adversarial attacks, imperceptible changes to the input results in vastly different predictions. Bayesian deep learning will not combat adversarial attacks, but it will show increased uncertainty on adversarial attacks.
+    * This also makes neural networks susceptible to adversarial attacks. In adversarial attacks, imperceptible changes to the input results in vastly different predictions. We desire that a neural network gives high uncertainty when we input an adversarial input.
 
   * Conventional neural networks have **millions of parameters**
 
     * This is detrimental for mobile applications. In mobile applications, we often have small memory and not much computation power. If we can prune the parameters, we would take up less memory and need fewer compute to make a prediction
     * (There are some speculations that the redundant parameters make it easier for adversarial attacks, but that is just a hypothesis.)
 
-Fortunately, this repository proposes a solution to both problems in one simple method: Bayesian inference
+This repository proposes a solution to both problems.
 
-In Bayesian inference, we infer a posterior over our parameters <img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>.  This posterior helps us in two ways:
+## Short summary of solution
+In short: in conventional learning of neural nets, we use SGD to find one parameter vector. In this project, we are going to find multiple parameter vectors. When making a prediction, we average the outputs of the neural net with each parameter vector. You can think of this as an ensemble method. 
+
+I hear you asking: how do we get multiple parameter vectors? Answer: we sample them from the posterior over our parameters.
+
+We infer a posterior over our parameters according to Bayes rule: <img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>.  This posterior helps us in two ways:
   
   * The predictions using the parameter posterior naturally give us uncertainty in our predictions. <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
   * The posterior tells us which parameters assign a high probability to being zero. We will prune these parameters.
 
 
-# Approximation of parameter posterior
+# Parameter posterior
 
-Before we talk about approximations, let us first write down the posterior. For the posterior, we need a likelihood and a prior. In this repository we deal with classification, so our likelihood is the probability of the prediction for the correct class. We choose a Gaussian prior over our parameters. The prior might sound like a new concept to many people, but I want to convince you that we have been using priors all the time. When we do *L2 regularisation* or when we do *weight decay*, that corresponds to assuming a Gaussian prior on the parameters.
+Let us first write down the posterior. For the posterior, we need a likelihood and a prior. In this repository we deal with classification, so our _likelihood_ is the probability of the prediction for the correct class. We choose a Gaussian _prior_ over our parameters. The prior might sound like a new concept to many people, but I want to convince you that we have been using priors all the time. When we do *L2 regularisation* or when we do *weight decay*, that corresponds to assuming a Gaussian prior on the parameters.
 
 <img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>
 
@@ -33,26 +38,33 @@ Before we talk about approximations, let us first write down the posterior. For 
 
 <img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2+ constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ffa76ab98ff1da7adf2574b4fba0caac.svg?invert_in_darkmode" align=middle width="409.62454499999996pt" height="26.70657pt"/>
 
-Now we want to approximate this posterior to use it for uncertain predictions and parameter pruning. Actually, we have been approximating this posterior all our lives. We train neural networks with Stochastic gradient descent to find the best parameters. This corresponds to approximating our posterior with one paramers vector. *Formal people would say that we make a point approximation: one point for the optimal parameter vector*. 
+So actually, we have been using the parameter posterior all the time when we did L2 regularisation. However, in conventional learning, we used only one parameter vector from this posterior. In this repository, we want to _sample_ multiple parameter vectors from the posterior.
 
-In our case, we want a richer approximation than a point approximation. But we also do not want to overcomplicate matters. Therefore, we approximate the posterior with a Gaussian. The Gaussian is ideal, because:
+## How do we sample from the posterior?
+Exact sampling from the posterior is hard. Therefore, we make a local approximation to the posterior that we can easily sample. We want a richer approximation than a point approximation. But we also do not want to overcomplicate matters. Therefore, we approximate the posterior with a Gaussian. The Gaussian is ideal, because:
 
-  * The Gaussian distribution can capture the local properties of the true posterior. This will get us the uncertainty in our predictions
-  * The Gaussian distribution has a simple form that we can use for pruning. Each parameter will have a mean and a standard deviation. With the mean and standard deviation, we calculate the zero probability and prune accordingly.
+  * The Gaussian distribution can capture the local structure of the true posterior. This will tell us about the behavior of parameter vectors: which parameters can assume a wide range of values, and which parameters are fairly restricted.
+  * The Gaussian distribution has a simple form that we can use for pruning. Each parameter will have a mean and a standard deviation. With the mean and standard deviation, we calculate the zero probability in one simple line. So pruning will be efficient.
 
 ## Loss function
 
-We will first discuss how we find the best approximation for our posterior. Later, we will show a bit of the formal math.
+We will find our approximation via stochastic gradient descent. This time, however, the loss function for SGD differs a little bit.
 
-Remember that the loss function for the true posterior was:
+Remember that the old loss function was:
 
-<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2+ constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ffa76ab98ff1da7adf2574b4fba0caac.svg?invert_in_darkmode" align=middle width="409.62454499999996pt" height="26.70657pt"/>
+<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/38f09888360020352fcd6ca86088359a.svg?invert_in_darkmode" align=middle width="325.88704499999994pt" height="26.70657pt"/>
 
-Now let us name our approximation <img alt="$q(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/68d98207e0a01db0b474b8cf789ab914.svg?invert_in_darkmode" align=middle width="32.8053pt" height="24.56552999999997pt"/>, then our new loss function is:
+Then our new loss function becomes:
 
-<img alt="$loss = classification \ loss + \sum_i  \frac{1}{2}\lambda\mu^2 - \log\sigma_i + \frac{1}{2} \lambda\sigma^2 + constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/4bec59300983a8f13a76de9aff3699d0.svg?invert_in_darkmode" align=middle width="468.854595pt" height="27.720329999999983pt"/>
+<img alt="$loss = classification loss + \sum_i - \log\sigma_i + \frac{1}{2}\lambda \sigma^2 +  \frac{1}{2}\lambda\mu^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ce7ceec6190c3e271d9cc08bc56b3359.svg?invert_in_darkmode" align=middle width="395.116095pt" height="27.720329999999983pt"/>
 
-Actually, our new loss function seems remarkably similar to the old loss function, except for the <img alt="$\frac{1}{2}\lambda\sigma^2 - \log \sigma$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/5d911faa1558935a5941410cdd0c0c38.svg?invert_in_darkmode" align=middle width="89.36234999999999pt" height="27.720329999999983pt"/>. One could consider that the *loss function* for the standard deviations.
+### What changed in the loss function?
+
+  * Both loss functions have the classification loss
+  * Both loss functions have a squared penalty on the mean of the parameter vector
+  * The new loss function has an additional penalty on <img alt="$\sigma$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/8cda31ed38c6d59d14ebefa440099572.svg?invert_in_darkmode" align=middle width="9.945705000000002pt" height="14.102549999999994pt"/>. This penalty _penalizes_ small sigma's. In other words, this loss function _promotes_ large values of sigma. In the `im` directory, you find a figure of this penalty term, named `loss_sigma.png`
+
+### Let's see some code
 
 At PyData, we love python. So let's write this out in python.
 
@@ -85,11 +97,9 @@ while not converged:
 I made a separate document in [/docs/](https://github.com/RobRomijnders/weight_uncertainty/blob/master/docs/explaining_var_inf_fact_norm.pdf) to explain in a formal sense why this new loss function works for approximation the parameter posterior. Please read it at your own risk :) You can read, use and enjoy this entire repository without ever reading it. 
 
 # Making predictions with uncertainty
-Now that we have a posterior, let's use it to make predictions and get uncertainties. What we want to know is the probability for an output class, given the input. We would get that like so
+Now that we have sampled parameter vectors, let's use them to make predictions and get uncertainties. What we want to know is the probability for an output class, given the input. We will make this prediction by averaging the output of the neural net with each of the parameter vectors:
 
-<img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
-
-It would take forever to integrate over all possible parameters. (Remember that neural networks have millions of parameters, so computing that integral requires integrating over millions of real dimensions). Fortunately, we can easily sample parameters and use it to approximate the integral. Again, we love python at PyData, so let's write some python:
+Again, we love python, so let's write some python:
 
 ```python
 def sample_prediction(input):
@@ -99,18 +109,30 @@ def sample_prediction(input):
 prediction = np.mean(sample_prediction(input))
 
 ``` 
-??? TODO ??? add corresponding code reference
+(`RestoredModel.predict()` in `util.util.py` implements exactly this)
 
 What does this code do?
 
-  * For many times, we sample a parameter vector from our approximation. We use the sampled parameter vector to make a prediction
-  * The approximation of our predictive distribution <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is the average of all the sampled predictions. 
+  * For many times, we sample a parameter vector from our approximation. We use the sampled parameter vector to make one prediction
+  * Our final prediction is the average of all the sampled predictions. 
 
 In this project, we work with classification. Therefore, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is a vector of `num_classes` dimension. Each entry in the vector tells the probability that the input belongs to that class.
 
 For example, if our classification problem concerns cats, dogs and cows. Then `prediction[1]` tells the probability that in input is a dog.
 
-### Getting the uncertainty
+### Intuition for the averaging
+Why does it help to sample many parameter vectors and average them?
+
+Three types of intuition:
+
+  * _Intuition_: This averaging looks like an ensemble method. More models know more than one model.
+  * _Robust_: Think about the adversarial examples. An image might be an adversarial input for one model, but it is hard to be adversarial for all the models, so we average out this adversarial prediction.
+  * _Formal_: This sampling and averaging approximates the posterior predictive distribution: <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
+
+(When I say _different models_, I mean to say: our model with different parameter vectors.)
+
+
+# Getting the uncertainty
 
 How do we get **one** number that tells us the uncertainty of our prediction? We have a full posterior predictive distribution, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/>. We want one number that quantifies the uncertainty. 
 
@@ -129,7 +151,7 @@ What we really care about is which uncertainty quantifier makes us robust againt
 # How to prune the parameters?
 Now let's answer how to prune the parameters. We have neural network with millions of weights. We want to drop many of them or at least zero them out. The question we face is the following: *which parameters should we drop first?*. 
 
-Intuitively, we drop the parameters first that is least useful. For example, if a parameter has a high posterior probability of being zero, we might as well drop it. Conversely, if a parameter has a low posterior probability of being zero, we want to keep it. We follow this intuition as we prune parameters: 1) we pick a threshold for the zero probability and 2) we sweep over all the parameters and drop the ones whose probability at zero is above the threshold. 
+Intuitively, we drop the parameters first that are least useful. For example, if a parameter has a high posterior probability of being zero, we might as well drop it. Conversely, if a parameter has a low posterior probability of being zero, we want to keep it. We follow this intuition as we prune parameters: 1) we pick a threshold for the zero probability and 2) we sweep over all the parameters and drop the ones whose probability at zero is above the threshold. 
 
 Again, PyData loves python, so let's write some python
 
@@ -139,7 +161,7 @@ for param, mu, sigma in approximation():
     if zero_probability > threshold:
         model.drop(param)
 ```
-For the corresponding code in the project, see: `utils/model.Model.pruning()`
+For the corresponding code in the project, see: `RestoredModel.pruning(threshold)`
 
 # Experiments and results
 For the experiments, we run the Bayesian neural network on three data set:
@@ -188,6 +210,15 @@ Uncertainty curve
 ![cifar_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/cifar_uncertainty_curve.png?raw=true)
 
 ### ECG5000
+
+
+# Summary
+Our motivation for this project concerns two problems with neural networks: uncertainty and pruning. Conventional neural networks use one parameter vector. We use the posterior and sample many parameter vectors. For a prediction, we average the output of the neural net with each parameter vector. We find the uncertainty as the entropy of the posterior predictive distribution. We prune parameters whose probability of being zero exceeds a threshold. Our experiment show that we can prune 90% of the parameters while maintaining performance. We also show pictures to get intuition for our uncertainty numbers.
+
+Our experiment are small. [This paper](https://arxiv.org/abs/1705.08665) does more extensive speed comparisons. [This paper](https://arxiv.org/pdf/1711.08244.pdf) shows how the uncertainty increases under stronger adversarial attacks.
+
+I hope that this code is useful to you. Contact me at romijndersrob@gmail.com if I can help more. 
+(Please understand that I get many emails: Formulate a concise question)
 
 
 # Further reading
