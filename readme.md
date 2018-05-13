@@ -186,10 +186,10 @@ Pruning curve
 ![pruning_curve_mnist](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/mnist_pruning_curve.png?raw=true)
 
 Examples with noise
-![mnist_noise](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/mnist/noise/noise_uncertain.gif?raw=true)
+![mnist_noise]()
 
 Examples with rotation
-![mnist_rotation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/mnist/rotation/rotation_uncertain.gif?raw=true)
+![mnist_rotation]()
 
 Uncertainty curve
 ![mnist_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/mnist_uncertainty_curve.png?raw=true)
@@ -201,10 +201,10 @@ Pruning curve
 ![pruning_curve_cifar](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/cifar_pruning_curve.png?raw=true)
 
 Examples with noise
-![cifar_noise](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/cifar/noise/noise_uncertain.gif?raw=true)
+![cifar_noise]()
 
 Examples with rotation
-![cifar_rotation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/cifar/rotation/rotation_uncertain.gif?raw=true)
+![cifar_rotation]()
 
 Uncertainty curve
 ![cifar_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/cifar_uncertainty_curve.png?raw=true)
