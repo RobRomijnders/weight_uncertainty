@@ -46,7 +46,7 @@ class Model(object):
         # pi = 1./num_batches
         # Both the Weight uncertainty paper and "Practical Variational Inference for Neural Networks" recommend to
         # anneal pi during training. I found that ramping up works best
-        pi = ramp_and_clip(1/10000., max((1/100., conf.batch_size / conf.num_samples)), 3000, 20000, global_step=None)
+        pi = ramp_and_clip(1/10000., max((1/10., conf.batch_size / conf.num_samples)), 3000, 20000, global_step=None)
         total_loss = self.loss + pi*self.kl_loss
 
         # Set up the optimizer
@@ -75,8 +75,8 @@ class Model(object):
         self.total_bits = tf.constant(0.0, dtype=tf.float32)
         sigma_collection = tf.get_collection('all_sigma')
         for sigm in sigma_collection:
-            self.total_bits += tf.reduce_sum(tf.log(sigm) / tf.log(2.))
-        self.total_bits = tf.identity(self.total_bits, "total_bits")
+            self.total_bits += tf.reduce_mean(tf.log(sigm) / tf.log(2.))
+        self.total_bits = tf.identity(self.total_bits, "total_bits") / len(sigma_collection)
         tf.summary.scalar('Total bits', self.total_bits)
 
         # Finally some Tensorflow bookkeeping

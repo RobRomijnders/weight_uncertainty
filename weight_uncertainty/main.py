@@ -5,6 +5,7 @@ from weight_uncertainty.util.model import Model
 from weight_uncertainty import conf
 import tensorflow as tf
 from os.path import join
+import time
 
 
 def train(model, dataloader):
@@ -55,5 +56,6 @@ if __name__ == '__main__':
     print(f'train set {dl.data["X_train"].shape[0]}, '
           f'val set {dl.data["X_val"].shape[0]}, '
           f'test set {dl.data["X_test"].shape[0]} ')
-
+    start_time = time.time()
     main(dl)
+    print(f'Seconds {time.time() - start_time}')

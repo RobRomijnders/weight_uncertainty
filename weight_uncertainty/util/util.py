@@ -39,7 +39,7 @@ def make_train_op(optimizer_name, grads, tvars):
 
     # Get the optimizer for all the sigma parameters
     learning_rate_std = tf.train.exponential_decay(10*conf.learning_rate, global_step, 1000, 0.99)
-    first_epoch = tf.cast(tf.greater_equal(global_step, 1000), tf.float32)  # No learning on sigmas in first epoch or so
+    first_epoch = tf.cast(tf.greater_equal(global_step, 2000), tf.float32)  # No learning on sigmas in first epoch or so
     optimizer_std = get_optimizer(optimizer_name)(learning_rate_std*first_epoch)
     tf.summary.scalar("Lr_std", learning_rate_std, family="Learning rates")
 
@@ -127,7 +127,7 @@ def print_validation_performance(step, model, dataloader, train_writer, loss_tra
 
     print(f'At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:6.3f}/{loss_val:6.3f}'
           f'KL loss {kl_loss_train:6.3f}/{kl_loss_val:6.3f} and val accuracy {acc_val:6.3f} '
-          f'and total bits {total_bits:15.1f}')
+          f'and total bits {total_bits:8.3f}')
 
 
 class RestoredModel:

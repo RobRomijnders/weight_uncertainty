@@ -19,7 +19,8 @@ def main(dataloader):
         threshold = 1.5
 
         # Loop over thresholds for the p_zero
-        while prune_ratio > 0.08 and count < 300:
+        # while prune_ratio > 0.08 and count < 300:
+        for threshold in np.linspace(-10, 1.5, 15):
             prune_ratio = restored_model.prune(threshold)
 
             # The batchsize is hardcoded, so we run a couple of batches from the validation set and average them
