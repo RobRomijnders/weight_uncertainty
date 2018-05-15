@@ -18,7 +18,7 @@ def main(dataloader):
     maybe_make_dir('log_risk')
 
     # Do many runs
-    im_test, lbl_test = dataloader.sample('test')
+    im_test, lbl_test = dataloader.sample()
 
     # Double check if it has sensible performance
     lbl_pred, _ = model.predict(im_test)
@@ -48,7 +48,7 @@ def main(dataloader):
             # Do all the printing and saving and bookkeeping
             print(f'At {var_name} {mutilated_value:8.3f} entropy {np.mean(entropy):5.3f} '
                   f'and mutual info {np.mean(mutual_info):5.3f} and variance {np.mean(variance):5.3f} '
-                  f'and ave softmax {np.mean(softmax_val):5.3f} and error {1.0 - np.mean(correct):5.3f}')
+                  f'and ave softmax {np.mean(softmax_val):5.3f} and accuracy {np.mean(correct):5.3f}')
             all_mutilated_images.append(mutilated_images)
         np.save('log_risk/%s.mc_%s.im.npy' % (mutilation_name, mc_type), np.stack(all_mutilated_images))
         np.save('log_risk/%s.mc_%s.risks.npy' % (mutilation_name, mc_type), np.array(risks))

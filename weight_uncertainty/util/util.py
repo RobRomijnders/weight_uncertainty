@@ -236,14 +236,14 @@ def calc_risk(preds, labels=None):
     # preds in shape [num_runs, num_batch, num_classes]
     num_runs, num_batch = preds.shape[:2]
 
-    ave_preds = np.mean(preds, 0)
-    pred_class = np.argmax(ave_preds, 1)
+    ave_preds = np.mean(preds, axis=0)
+    pred_class = np.argmax(ave_preds, axis=1)
 
     # entropy of the posterior predictive
-    entropy = reduce_entropy(ave_preds, -1)
+    entropy = reduce_entropy(ave_preds, axis=1)
 
     # Expected entropy of the predictive under the parameter posterior
-    entropy_exp = np.mean(reduce_entropy(preds, -1), axis=0)
+    entropy_exp = np.mean(reduce_entropy(preds, axis=2), axis=0)
     mutual_info = entropy - entropy_exp  # Equation 2 of https://arxiv.org/pdf/1711.08244.pdf
 
     # Average and variance of softmax for the predicted class

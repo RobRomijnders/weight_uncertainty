@@ -6,7 +6,7 @@ from weight_uncertainty.util.util import maybe_make_dir
 from weight_uncertainty.util.load_data import normalize
 import subprocess
 
-latex = True  # set to True for latex formatting
+latex = False  # set to True for latex formatting
 
 mc_type = 'mc_vif'
 for mutilation, var_name, _, _ in conf.experiments:
@@ -19,6 +19,8 @@ for mutilation, var_name, _, _ in conf.experiments:
     maybe_make_dir(output_dir)  # Make dir to save images
 
     num_experiments, num_batch = images.shape[:2]
+    assert risks.shape[0] == num_experiments
+    assert risks.shape[2] == num_batch
 
     num_rows = 8
 
@@ -39,10 +41,10 @@ for mutilation, var_name, _, _ in conf.experiments:
             axarr[num_row, 0].set_title('Entropy %5.3f' % risks[num_experiment, 1, batch_count], color=color)
 
             axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 1, batch_count],
-                                     cmap='coolwarm', vmin=0.5, vmax=1.5)
+                                     cmap='coolwarm', vmin=0.9, vmax=1.3)
             axarr[num_row, 1].set_title(f'Entropy {risks[num_experiment, 1, batch_count]:7.2f}')
             axarr[num_row, 2].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count],
-                                     cmap='coolwarm', vmin=0., vmax=1.1)
+                                     cmap='coolwarm', vmin=0.3, vmax=0.5)
             axarr[num_row, 2].set_title(f'Mutual information{risks[num_experiment, 2, batch_count]:7.3f}')
             batch_count += 1
 

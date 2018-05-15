@@ -45,7 +45,7 @@ def main(dataloader):
 
 
 if __name__ == '__main__':
-    dl = Dataloader(augment=False)
+    dl = Dataloader(augment=True)
 
     # Maybe make some plots of ucr data
     do_plot = False
