@@ -6,7 +6,7 @@ from weight_uncertainty.util.util import maybe_make_dir
 from weight_uncertainty.util.load_data import normalize
 import subprocess
 
-latex = False  # set to True for latex formatting
+latex = True  # set to True for latex formatting
 
 mc_type = 'mc_vif'
 for mutilation, var_name, _, _ in conf.experiments:
@@ -27,7 +27,7 @@ for mutilation, var_name, _, _ in conf.experiments:
     for num_experiment in range(num_experiments):
         # if num_experiment > 2: break
         # if num_experiment % 2 == 0: continue
-        f, axarr = plt.subplots(num_rows, 3, figsize=(15, 15))
+        f, axarr = plt.subplots(num_rows, 2, figsize=(15, 15))
 
         batch_count = 0
         for num_row in range(num_rows):
@@ -38,14 +38,10 @@ for mutilation, var_name, _, _ in conf.experiments:
             else:
                 assert False
             color = 'g' if risks[num_experiment, 5, batch_count].astype(np.bool) else 'r'
-            axarr[num_row, 0].set_title('Entropy %5.3f' % risks[num_experiment, 1, batch_count], color=color)
-
-            axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 1, batch_count],
-                                     cmap='coolwarm', vmin=0.9, vmax=1.3)
-            axarr[num_row, 1].set_title(f'Entropy {risks[num_experiment, 1, batch_count]:7.2f}')
-            axarr[num_row, 2].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count],
-                                     cmap='coolwarm', vmin=0.3, vmax=0.5)
-            axarr[num_row, 2].set_title(f'Mutual information{risks[num_experiment, 2, batch_count]:7.3f}')
+            axarr[num_row, 0].set_title('Entropy %5.3f' % risks[num_experiment, 2, batch_count], color=color)
+            axarr[num_row, 1].imshow(np.ones((28, 28)) * risks[num_experiment, 2, batch_count],
+                                     cmap='coolwarm', vmin=-1.0, vmax=1.0)
+            axarr[num_row, 1].set_title(f'Mutual information{risks[num_experiment, 2, batch_count]:7.3f}')
             batch_count += 1
 
         for axrow in axarr:
