@@ -166,25 +166,24 @@ class Dataloader:
         if random() > 0.5:
             return X
 
-        random_num = random()
-        if random_num < 0.33:
-            # shift pixels inner
-            x, y = np.random.randint(1, 5, size=(2,))
+        if random() < 0.8:
+            # Shift over x axis
+            x, y = np.random.randint(1, 6, size=(2,))
             X_out = np.copy(X)
-            X_out[:, x:, y:] = X[:, :-x, :-y]
-            return X_out
-        elif random_num < 0.66:
-            # shift pixels outer
-            x, y = np.random.randint(1, 5, size=(2,))
-            X_out = np.copy(X)
-            X_out[:, :-x, :-y] = X[:, x:, y:]
-            return X_out
+            if random() < 0.5: # Forward
+                X_out[:, x:, :] = X[:, :-x, :]
+            else:  # Backward
+                X_out[:, :-x, :] = X[:, x:, :]
+            if random() < 0.5: # Forward
+                X_out[:, :, y:] = X[:, :, :-y]
+            else:  # Backward
+                X_out[:, :, :-y] = X[:, :, y:]
         else:
             # Apply a Gaussian blur
             X_out = np.copy(X)
             for n in range(X.shape[0]):
                 X_out[n, :, :, 0] = gaussian_filter(X[n, :, :, 0], sigma=1, order=0)
-            return X_out
+        return X_out
 
 
 def normalize(data, reverse=False):

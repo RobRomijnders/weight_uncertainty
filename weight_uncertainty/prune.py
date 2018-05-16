@@ -20,7 +20,7 @@ def main(dataloader):
 
         # Loop over thresholds for the p_zero
         # while prune_ratio > 0.08 and count < 300:
-        for threshold in np.linspace(-10, 1.5, 15):
+        for threshold in np.linspace(-2, 1.5, 15):
             prune_ratio = restored_model.prune(threshold)
 
             # The batchsize is hardcoded, so we run a couple of batches from the validation set and average them
@@ -30,7 +30,7 @@ def main(dataloader):
                     yield restored_model.evaluate(x, y)
 
             # Average the performances over some number of batches
-            acc_test = np.mean(np.array(list(test_many(25))))
+            acc_test = np.mean(np.array(list(test_many(5))))
 
             # Print and save to list
             print(f'For pruning at {threshold:6.3f} with ratio {prune_ratio:6.3f} '
