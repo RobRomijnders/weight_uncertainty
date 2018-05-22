@@ -71,7 +71,7 @@ def plot_risks():
     risk_ylims = [(0.0, 2.0), (0.0, 1.0), (0.0, 0.4), (0.0, 1.0), (0.0, 1.0)]
 
     # Pyplot magic
-    f, axarr = plt.subplots(len(var2idx), len(risk_types))
+    f, axarr = plt.subplots(len(var2idx), len(risk_types), figsize=(15, 15))
 
     for filename in filenames:
         table = np.load(filename)
@@ -103,8 +103,8 @@ def plot_risks():
     # Pyplot magic
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.suptitle(str(var2idx))
-    # plt.savefig('im/risks.png')
-    plt.show()
+    plt.savefig(f'im/{conf.dataset}/risks.png')
+    # plt.show()
 
 
 if __name__ == '__main__':
