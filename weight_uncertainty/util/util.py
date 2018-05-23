@@ -125,7 +125,7 @@ def print_validation_performance(step, model, dataloader, train_writer, loss_tra
     train_writer.add_summary(summ_str, step)
     train_writer.flush()
 
-    print(f'At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:6.3f}/{loss_val:6.3f}'
+    print(f'At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:9.2f}/{loss_val:9.2f}'
           f'KL loss {kl_loss_train:6.3f}/{kl_loss_val:6.3f} and val accuracy {acc_val:6.3f} '
           f'and total bits {total_bits:8.3f}')
 

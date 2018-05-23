@@ -20,7 +20,7 @@ def main(dataloader):
 
         # Loop over thresholds for the p_zero
         # while prune_ratio > 0.08 and count < 300:
-        for threshold in [-10000, -1000, -500, -200, -100, -50, -20] + np.linspace(-10, 3.5, 10).tolist():
+        for threshold in [-10000, -1000, -500, -200, -100, -50, -20] + np.linspace(-10, 3.5, 30).tolist():
             prune_ratio = restored_model.prune(threshold)
             prune_ratio = 1.0 - prune_ratio  # Depends on how you interpret the "ratio"
 
@@ -31,7 +31,7 @@ def main(dataloader):
                     yield restored_model.evaluate(x, y)
 
             # Average the performances over some number of batches
-            acc_test = np.mean(np.array(list(test_many(5))))
+            acc_test = np.mean(np.array(list(test_many(10))))
 
             # Print and save to list
             print(f'For pruning at {threshold:6.3f} with ratio {prune_ratio:6.3f} '

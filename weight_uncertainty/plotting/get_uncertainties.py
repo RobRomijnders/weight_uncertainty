@@ -26,6 +26,8 @@ def main(dataloader):
 
     # Loop over the many experiments. See the .ini for how they are defined
     for mutilation_name, var_name, low_value, high_value in conf.experiments:  # Read from the experiment method
+        if conf.dataset == 'cifar' and var_name != 'sigma':
+            continue
         # Find the mutilation function. Maybe not so beautiful code, but it works
         mutilation_function = globals()[mutilation_name]
 
