@@ -103,6 +103,7 @@ def plot_risks():
     # Pyplot magic
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.suptitle(str(var2idx))
+    maybe_make_dir(f'im/{conf.dataset}')
     plt.savefig(f'im/{conf.dataset}/risks.png')
     # plt.show()
 
