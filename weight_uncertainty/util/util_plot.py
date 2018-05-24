@@ -11,7 +11,7 @@ def plot_pruning(prune_results):
     plt.plot(prune_data[:, 1], prune_data[:, 2], 'r', label='Validation performance')
     plt.plot([0.8999, 0.9001], [0.0, 1.0], '-', label='10% boundary')
     plt.xlabel('Prune ratio')
-    plt.xlim([0., 1.])
+    plt.xlim([0., 1.05])
     plt.ylim([0., 1.05])
     plt.ylabel('Validation accuracy')
     plt.legend()
