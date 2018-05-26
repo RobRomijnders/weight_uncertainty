@@ -1,5 +1,3 @@
-This repository is under heavy development. Please use at own risk. I plan to finish it before PyData on May 25th.
-
 # Introduction
 The code in this repository implements Bayesian inference on a deep neural network. The repository also serves as notes for my talk at PyData Amsterdam 2018 **Bayesian Deep Learning with 10 % of the weights** 
 
@@ -22,9 +20,9 @@ In short: in conventional learning of neural nets, we use SGD to find one parame
 
 I hear you asking: how do we get multiple parameter vectors? Answer: we sample them from the posterior over our parameters.
 
-We infer a posterior over our parameters according to Bayes rule: <img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>.  This posterior helps us in two ways:
+We infer a posterior over our parameters according to Bayes rule: <img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>.  This posterior helps us in two ways:
   
-  * The predictions using the parameter posterior naturally give us uncertainty in our predictions. <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
+  * The predictions using the parameter posterior naturally give us uncertainty in our predictions. <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
   * The posterior tells us which parameters assign a high probability to being zero. We will prune these parameters.
 
 
@@ -32,11 +30,11 @@ We infer a posterior over our parameters according to Bayes rule: <img alt="$p(w
 
 Let us first write down the posterior. For the posterior, we need a likelihood and a prior. In this repository we deal with classification, so our _likelihood_ is the probability of the prediction for the correct class. We choose a Gaussian _prior_ over our parameters. The prior might sound like a new concept to many people, but I want to convince you that we have been using priors all the time. When we do *L2 regularisation* or when we do *weight decay*, that corresponds to assuming a Gaussian prior on the parameters.
 
-<img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>
+<img alt="$p(w|data) \propto p(data|w)p(w)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/ae6c870a717604621ad875abaa1b936d.svg?invert_in_darkmode" align=middle width="193.903545pt" height="24.56552999999997pt"/>
 
-<img alt="$log p(w|data) =  log p(data|w) + log p(w) + constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/e31c20782efe67b634accb5aabf87054.svg?invert_in_darkmode" align=middle width="361.48579499999994pt" height="24.56552999999997pt"/>
+<img alt="$log p(w|data) =  log p(data|w) + log p(w) + constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/e31c20782efe67b634accb5aabf87054.svg?invert_in_darkmode" align=middle width="361.48579499999994pt" height="24.56552999999997pt"/>
 
-<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2+ constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ffa76ab98ff1da7adf2574b4fba0caac.svg?invert_in_darkmode" align=middle width="409.62454499999996pt" height="26.70657pt"/>
+<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2+ constant$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/ffa76ab98ff1da7adf2574b4fba0caac.svg?invert_in_darkmode" align=middle width="409.62454499999996pt" height="26.70657pt"/>
 
 So actually, we have been using the parameter posterior all the time when we did L2 regularisation. However, in conventional learning, we used only one parameter vector from this posterior. In this repository, we want to _sample_ multiple parameter vectors from the posterior.
 
@@ -52,17 +50,17 @@ We will find our approximation via stochastic gradient descent. This time, howev
 
 Remember that the old loss function was:
 
-<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/38f09888360020352fcd6ca86088359a.svg?invert_in_darkmode" align=middle width="325.88704499999994pt" height="26.70657pt"/>
+<img alt="$log p(w|data) =  classification \ loss + \lambda \sum_i w_i^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/38f09888360020352fcd6ca86088359a.svg?invert_in_darkmode" align=middle width="325.88704499999994pt" height="26.70657pt"/>
 
 Then our new loss function becomes:
 
-<img alt="$loss = classification loss + \sum_i - \log\sigma_i + \frac{1}{2}\lambda \sigma^2 +  \frac{1}{2}\lambda\mu^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/ce7ceec6190c3e271d9cc08bc56b3359.svg?invert_in_darkmode" align=middle width="395.116095pt" height="27.720329999999983pt"/>
+<img alt="$loss = classification loss + \sum_i - \log\sigma_i + \frac{1}{2}\lambda \sigma^2 +  \frac{1}{2}\lambda\mu^2$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/ce7ceec6190c3e271d9cc08bc56b3359.svg?invert_in_darkmode" align=middle width="395.116095pt" height="27.720329999999983pt"/>
 
 ### What changed in the loss function?
 
   * Both loss functions have the classification loss
   * Both loss functions have a squared penalty on the mean of the parameter vector
-  * The new loss function has an additional penalty on <img alt="$\sigma$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/8cda31ed38c6d59d14ebefa440099572.svg?invert_in_darkmode" align=middle width="9.945705000000002pt" height="14.102549999999994pt"/>. This penalty _penalizes_ small sigma's. In other words, this loss function _promotes_ large values of sigma. In the `im` directory, you find a figure of this penalty term, named `loss_sigma.png`
+  * The new loss function has an additional penalty on <img alt="$\sigma$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/8cda31ed38c6d59d14ebefa440099572.svg?invert_in_darkmode" align=middle width="9.945705000000002pt" height="14.102549999999994pt"/>. This penalty _penalizes_ small sigma's. In other words, this loss function _promotes_ large values of sigma. In the `im` directory, you find a figure of this penalty term, named `loss_sigma.png`
 
 ### Let's see some code
 
@@ -116,7 +114,7 @@ What does this code do?
   * For many times, we sample a parameter vector from our approximation. We use the sampled parameter vector to make one prediction
   * Our final prediction is the average of all the sampled predictions. 
 
-In this project, we work with classification. Therefore, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is a vector of `num_classes` dimension. Each entry in the vector tells the probability that the input belongs to that class.
+In this project, we work with classification. Therefore, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/> is a vector of `num_classes` dimension. Each entry in the vector tells the probability that the input belongs to that class.
 
 For example, if our classification problem concerns cats, dogs and cows. Then `prediction[1]` tells the probability that in input is a dog.
 
@@ -127,14 +125,14 @@ Three types of intuition:
 
   * _Intuition_: This averaging looks like an ensemble method. More models know more than one model.
   * _Robust_: Think about the adversarial examples. An image might be an adversarial input for one model, but it is hard to be adversarial for all the models, so we average out this adversarial prediction.
-  * _Formal_: This sampling and averaging approximates the posterior predictive distribution: <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
+  * _Formal_: This sampling and averaging approximates the posterior predictive distribution: <img alt="$p(y|x) = \int_w p(p|x,w)p(w|data)dw$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/dbb647613f36e527b72e9cdccbd6c3ce.svg?invert_in_darkmode" align=middle width="239.23399499999996pt" height="26.48447999999999pt"/>
 
 (When I say _different models_, I mean to say: our model with different parameter vectors.)
 
 
 # Getting the uncertainty
 
-How do we get **one** number that tells us the uncertainty of our prediction? We have a full posterior predictive distribution, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/master/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/>. We want one number that quantifies the uncertainty. 
+How do we get **one** number that tells us the uncertainty of our prediction? We have a full posterior predictive distribution, <img alt="$p(y|x)$" src="https://rawgit.com/RobRomijnders/weight_uncertainty/None/svgs/fc76db86ea6c427fdd05067ba4835daa.svg?invert_in_darkmode" align=middle width="43.50555pt" height="24.56552999999997pt"/>. We want one number that quantifies the uncertainty. 
 
 There are many choices for this one number to summarize the uncertainty
 
@@ -185,31 +183,19 @@ To this end, we have three plots per data set:
 Pruning curve
 ![pruning_curve_mnist](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/mnist_pruning_curve.png?raw=true)
 
-Examples with noise
-![mnist_noise]()
-
-Examples with rotation
-![mnist_rotation]()
-
-Uncertainty curve
-![mnist_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/mnist_uncertainty_curve.png?raw=true)
+Examples and the uncertainty curves are in the [presentation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/docs/presentation/versions/final_pydata18_bayes_nn_rob_romijnders_1.pdf)
 
 ### CIFAR10
-
-### MNIST
 Pruning curve
 ![pruning_curve_cifar](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/cifar_pruning_curve.png?raw=true)
 
-Examples with noise
-![cifar_noise]()
-
-Examples with rotation
-![cifar_rotation]()
-
-Uncertainty curve
-![cifar_uncertain_curve](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/uncertainty_curves/cifar_uncertainty_curve.png?raw=true)
+Examples and the uncertainty curves are in the [presentation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/docs/presentation/versions/final_pydata18_bayes_nn_rob_romijnders_1.pdf)
 
 ### ECG5000
+Pruning curve
+![pruning_curve_ucr](https://github.com/RobRomijnders/weight_uncertainty/blob/master/weight_uncertainty/im/pruning_curves/ucr_pruning_curve.png?raw=true)
+
+Examples and the uncertainty curves are in the [presentation](https://github.com/RobRomijnders/weight_uncertainty/blob/master/docs/presentation/versions/final_pydata18_bayes_nn_rob_romijnders_1.pdf)
 
 
 # Summary
