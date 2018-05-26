@@ -12,7 +12,9 @@ def train(model, dataloader):
     # Some tensorflow initializations
     sess = tf.get_default_session()
     train_writer = tf.summary.FileWriter(conf.log_direc)
-    try:  # To try-finally, in case we run into a NaN error or when we make keyboard interrupt
+
+    # Do try-finally, in case we run into a NaN error or when we make keyboard interrupt
+    try:
         for step in range(conf.max_steps):
             x, y = dataloader.sample()
             *train_losses, _ = sess.run([model.loss,
@@ -49,8 +51,8 @@ if __name__ == '__main__':
 
     # Maybe make some plots of ucr data
     do_plot = False
-    if do_plot and dl.is_time_series():
-            plot_ucr(dl.sample('train'))
+    if do_plot and dl.is_time_series:
+            plot_ucr(*dl.sample('train'))
 
     # Print data set sizes
     print(f'train set {dl.data["X_train"].shape[0]}, '

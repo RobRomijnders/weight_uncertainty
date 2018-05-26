@@ -65,7 +65,8 @@ def noise_clip(images, sigma):
     return images
 
 ##########################################################################################################
-# SUPER UGLY AND REPEATING CODE
+# BELOW IS SUPER UGLY AND REPEATING CODE
+##########################################################################################################
 
 
 def warp_cifar(images, warp_value):

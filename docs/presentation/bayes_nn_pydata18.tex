@@ -91,6 +91,8 @@
 \usepackage{url}
 \usepackage{mathtools}% Loads amsmath
 \usepackage{lipsum}
+\usepackage{caption}
+\captionsetup{font=footnotesize}
 
 
 
@@ -115,7 +117,8 @@
 \subsection{Motivation}
 
 \begin{frame}{Problems with neural networks}
-	\centerline{Neural networks have three problems:}
+	\centerline{Neural networks have two problems:}
+	\centerline{  }
 	\begin{enumerate}
 		\item Neural networks give no \textbf{uncertainty} in predictions \\ 
 		      \quad \quad \small{ $\rightarrow$ easily fooled by \textbf{adversarial examples}}
@@ -189,7 +192,7 @@
 \begin{frame}{Historical perspective}
 	\centerline{This content is not new: it has been around for decennia/centuries}
 	\centerline{  }
-	
+		
 	\begin{block}{Being Bayesian about neural networks}
 		\begin{itemize}
 			\item Bayes lived in 18th century
@@ -197,11 +200,11 @@
 			\item Bayesian Neural networks: Neal (1995)
 		\end{itemize}
 	\end{block}
-	
+		
 	\begin{block}{Uncertainties for a model}
 		Shannon published information theory in 1948
 	\end{block}
-	
+		
 \end{frame}
 
 \subsection{Bayesian inference}
@@ -216,12 +219,9 @@
 	\begin{equation*}
 		posterior \propto likelihood \times prior
 	\end{equation*}
-	\begin{equation*}
-		p(w|data) \propto p(data|w)p(w)
-	\end{equation*}
 	\centerline{  }
 	\begin{equation*}
-		log p(w|data) =  log p(data|w) + log p(w) + constant
+		log \ posterior =  log \ likelihood + log \ prior + constant
 	\end{equation*}
 \end{frame}
 
@@ -282,37 +282,38 @@
 	\title{Old and new loss functions}
 	\begin{block}{Loss functions}
 		\begin{align*}
-			  & old \ loss                                                                                                                                                                             \\
-			  & = classification \ loss +   \sum_i  \undermath{\lambda  w_i^2}{L2 penalty}                                                                  +constant                                  \\
-			  &                                                                                                                                                                                        \\
-			  & new \ loss                                                                                                                                                                             \\		
-			  & = classification \ loss +    \sum_i         \undermath{\frac{1}{2}\lambda\mu_i^2 }{L2 penalty}- \undermath{\log\sigma_i + \frac{1}{2}\lambda \sigma_i^2}{penalty on $\sigma$}+constant \\
+			  & old \ loss                                                                                                                                                                    \\
+			  & = classification \ loss +   \sum_i  \undermath{\lambda  w_i^2}{L2 penalty}                                                                                                    \\
+			  &                                                                                                                                                                               \\
+			  & new \ loss                                                                                                                                                                    \\		
+			  & = classification \ loss +    \sum_i         \undermath{\frac{1}{2}\lambda\mu_i^2 }{L2 penalty}- \undermath{\log\sigma_i + \frac{1}{2}\lambda \sigma_i^2}{penalty on $\sigma$} \\
 		\end{align*}
 	\end{block}
-	
+		
 	\begin{block}{Interpretation}
 		\begin{itemize}
 			\item L2 penalty on the parameter remains
 			\item Loss function on the $\sigma$ 
 		\end{itemize}
-		
+				
 	\end{block}
 \end{frame}
 
 
 \begin{frame}{Intuition}
-	\begin{equation*}
-		loss = \undermath{classification \ loss + \sum_i \frac{1}{2}\lambda\mu_i^2 }{loss on location of weights} \undermath{-\log\sigma_i + \frac{1}{2}\lambda \sigma_i^2}{loss on $\sigma$}+constant
-	\end{equation*}
+	\begin{align*}
+		  & loss                                                                                                                                                                             \\
+		  & = \undermath{classification \ loss + \sum_i \frac{1}{2}\lambda\mu_i^2 }{loss on location of weights} \undermath{-\log\sigma_i + \frac{1}{2}\lambda \sigma_i^2}{loss on $\sigma$} 
+	\end{align*}
 \end{frame}
 
 
 \begin{frame}{Summary}
 	\begin{itemize}
 		\item \textbf{What do we care about?} \\ Uncertainties and pruning
-		\item \textbf{How we do it?} \\ Find many parameter vectors and average
 		\item \textbf{How we do that?} \\ Bayesian inference
 		\item \textbf{How we do that?} \\ Approximate the parameter posterior
+		\item \textbf{How we do that?} \\ Find a $\mu$ and $\sigma$ per parameter
 		\item \textbf{What do we do in the end?} \\ Minimize the loss function on the previous slide
 	\end{itemize}
 \end{frame}
@@ -364,10 +365,10 @@
 	\begin{block}{Fun}
 		No deep learning project is complete without \textbf{MNIST}
 	\end{block}
-		
+			
 	\begin{block}{Serious}
 		Two most common applications of deep learning:
-				
+						
 		\begin{itemize}
 			\item Image recognition: \textbf{CIFAR10} data set
 			\item Time series classification: \textbf{UCR - ECG's}
@@ -393,11 +394,10 @@
 \end{frame}
 
 \begin{frame}{ECG examples}
-	\centerline{??? MAKE ECG EXAMPLES HERE}
-	%\begin{figure}
-	%\fitfigure{im/cifar_examples.png}
-	%\caption{Examples of ECG. Train set: 500 samples. Test set: 4500 samples}
-	%\end{figure}
+	\begin{figure}
+		\fitfigure{im/ucr_examples.png}
+		\caption{Examples of ECG. Train set: 500 samples. Test set: 4500 samples}
+	\end{figure}
 \end{frame}
 
 
@@ -442,7 +442,7 @@
 \end{frame}
 
 % set to false to speed up compilation
-\ifnum1=0
+\ifnum1=1
 \begin{frame}{Noise}
 	\hspace*{-50mm}
 	\begin{figure}
@@ -509,11 +509,11 @@
 
 \begin{frame}
 	\centerline{\Huge{Questions?}}
-	
+		
 	\centerline{  }
 	\centerline{\mdlink{robromijnders.github.io}{http://robromijnders.github.io/}}
 	\centerline{  }
-	
+		
 	\begin{block}{Material}
 		\mdlink{\url{github.com/RobRomijnders/weight_uncertainty}}{github.com/RobRomijnders/weight_uncertainty}
 		\centerline{  }
@@ -534,7 +534,7 @@
 		\fitfigure{/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/im/tensorboard_sample_sigma_pruning.png}
 		\caption{The VI objective increases the sigma's by itself!!}
 	\end{figure}
-	
+		
 \end{frame}
 
 \begin{frame}{Loss on $\sigma$}
@@ -566,7 +566,7 @@
 	\begin{block}{Pruning: speed}
 		\mdlink{Bayesian compression for deep learning, Louizos @ NIPS2017}{http://papers.nips.cc/paper/6921-bayesian-compression-for-deep-learning.pdf}
 	\end{block}
-	
+		
 	\begin{block}{Uncertainty: adversarial attack}
 		\mdlink{Adversarial phenomenon in Bayesian deep learning, Rawat, 2017}{https://arxiv.org/pdf/1711.08244.pdf}
 	\end{block}
@@ -580,6 +580,20 @@
 	\end{itemize}
 	\centerline{  }
 	\textbf{\Huge{Anything is better than point estimation !!!}}
+\end{frame}
+
+\begin{frame}{Gaussian approximation}
+	\begin{figure}
+		\fitfigure{im/approximation.png}
+		\caption{Any approximation (VI) is better than just a point estimate (MLE)}
+	\end{figure}
+\end{frame}
+
+\begin{frame}{Bernoulli approximations}
+	\begin{figure}
+		\fitfigure{im/gaussian_or_bernoulli.png}
+		\caption{Bernoulli approximation does not capture local properties}
+	\end{figure}
 \end{frame}
 
 \end{document}

@@ -1,3 +1,3 @@
 from weight_uncertainty.config import Config
 
-conf = Config('ucr')
+conf = Config('mnist')

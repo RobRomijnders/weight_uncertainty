@@ -61,24 +61,24 @@ def make_train_op(optimizer_name, grads, tvars):
     return train_op
 
 
-def plot_grad_tensorboard(input_list):
-    """
-    VERY EXPERIMENTAL FUNCTION. PLEASE IGNORE
-
-    it is inspired on Information Theory of Deep learning by Naftali Tishby
-    :param input_list:
-    :return:
-    """
-    for optimizer, grad_tvar_list in input_list:
-        for _, tvar in grad_tvar_list:
-            first = optimizer.get_slot(tvar, 'm')
-            second = optimizer.get_slot(tvar, 'v')
-            if first and second:
-                first_unbiased = first / (1. - optimizer._beta1_t)
-                second_unbiased = second / (1. - optimizer._beta2_t)
-                var = second_unbiased - tf.square(first_unbiased)
-                log_snr = tf.reduce_mean(tf.log(1E-9 + tf.div(tf.square(first_unbiased), var)))
-                tf.summary.scalar(tvar.name, log_snr, family='log_snr of grad')
+# def plot_grad_tensorboard(input_list):
+#     """
+#     VERY EXPERIMENTAL FUNCTION. PLEASE IGNORE
+#
+#     it is inspired on Information Theory of Deep learning by Naftali Tishby
+#     :param input_list:
+#     :return:
+#     """
+#     for optimizer, grad_tvar_list in input_list:
+#         for _, tvar in grad_tvar_list:
+#             first = optimizer.get_slot(tvar, 'm')
+#             second = optimizer.get_slot(tvar, 'v')
+#             if first and second:
+#                 first_unbiased = first / (1. - optimizer._beta1_t)
+#                 second_unbiased = second / (1. - optimizer._beta2_t)
+#                 var = second_unbiased - tf.square(first_unbiased)
+#                 log_snr = tf.reduce_mean(tf.log(1E-9 + tf.div(tf.square(first_unbiased), var)))
+#                 tf.summary.scalar(tvar.name, log_snr, family='log_snr of grad')
 
 
 class MixturePrior(object):

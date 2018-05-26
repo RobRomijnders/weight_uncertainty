@@ -75,6 +75,10 @@ class SoftmaxLayer:
         self.prior = prior
 
     def get_kl(self):
+        """
+        Get the KL divergence from the current parameters to the prior
+        :return:
+        """
         theta_kl = self.prior.get_kl_divergence((self.softmax_w_mu, self.softmax_w_std))
         theta_kl += self.prior.get_kl_divergence((self.softmax_b_mu, self.softmax_b_std))
         return theta_kl
@@ -117,19 +121,26 @@ class BayesianConvCell:
         self.activation = activation
 
     def get_kl(self):
+        """
+        Get the KL divergence from the current parameters to the prior
+        :return:
+        """
         theta_kl = self.prior.get_kl_divergence((self.W_mu, self.W_std))
         theta_kl += self.prior.get_kl_divergence((self.b_mu, self.b_std))
         return theta_kl
 
     def __call__(self, inputs):
-        with tf.variable_scope(self.name):
+        with tf.variable_scope(self.name):  # Call in a variable scope, because we deal with different layers
             filter_shape = tf.TensorShape(self.filter_shape + [inputs.shape[-1], self.num_filters])
+
+            # Both the W and B are random normal variables
             self.W, self.W_mu, self.W_std = get_random_normal_variable('conv_weight',
                                                                        self.prior,
                                                                        shape=filter_shape)
             self.b, self.b_mu, self.b_std = get_random_normal_variable('conv_bias', self.prior,
                                                                        shape=[self.num_filters])
 
+        # Vertical stride depends on if we are a time series or not
         vert_stride = 1 if 1 in self.filter_shape else self.stride
         act = conv2d(inputs, filter=self.W, strides=[1, self.stride, vert_stride, 1],
                      padding='SAME', data_format='NHWC') + self.b

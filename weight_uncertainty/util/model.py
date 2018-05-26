@@ -25,18 +25,20 @@ class Model(object):
         else:
             outputs = self.add_CNN()
 
+        # Get the logits from the outputs of the CNN or RNN
         logits = self.softmax_layer(outputs, num_classes)
 
+        # And softmax them to get proper predictions between [0, 1]
         self.predictions = tf.nn.softmax(logits, name='predictions')
 
-        # The rest is all about losses and tensorflow bookkeeping
+        # --- The rest is all about losses and tensorflow bookkeeping ---
 
         # Classification loss
         class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.y_placeholder)
         self.loss = tf.identity(tf.reduce_mean(class_loss), name='classification_loss')
 
         # KL loss
-        # Sum the KL losses
+        # Sum the KL losses from the collection. This just simplifies the handling of loss elements
         self.kl_loss = tf.add_n(tf.get_collection('kl_losses'))
 
         # Weigh the kl loss across all the batches
@@ -79,7 +81,7 @@ class Model(object):
         self.total_bits = tf.identity(self.total_bits, "total_bits") / len(sigma_collection)
         tf.summary.scalar('Total bits', self.total_bits)
 
-        # Finally some Tensorflow bookkeeping
+        # Finally the usual necessary Tensorflow ops
         self.summary_op = tf.summary.merge_all()
         self.saver = tf.train.Saver()
         self.init_op = tf.global_variables_initializer()
@@ -119,6 +121,7 @@ class Model(object):
 
         filter_shape = conf.get_filter_shape(self.is_time_series)
 
+        # Create the layers of the CNN in a loop :)
         for i, num_filt in enumerate(conf.num_filters):
             conv_layer = BayesianConvCell(f'conv{i}',
                                           num_filters=num_filt,
@@ -130,8 +133,7 @@ class Model(object):
         final_output = inputs
 
         # Some final reshaping
-        final_output_shape = final_output.shape
-        print(final_output_shape)
+        final_output_shape = final_output.shape  # Final shape depends on the number of layers, stride and kernel size
         return tf.reshape(final_output, shape=[-1, final_output_shape[1:].num_elements()])
 
     def softmax_layer(self, outputs, num_classes):
