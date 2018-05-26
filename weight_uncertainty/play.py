@@ -11,6 +11,7 @@ from weight_uncertainty.util.util import calc_risk
 Simple code to read some images and plot a prediction and its uncertainties
 """
 
+
 def read_images():
     grid = Image.open('/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/input/grid.png').convert('L')
     im_array = (np.array(grid).astype(np.float32)-33)/78

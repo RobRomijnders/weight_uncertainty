@@ -184,9 +184,6 @@
 	\lstinputlisting[language=Python,basicstyle=\small]{code/motivation.py}
 \end{frame}
 
-\begin{frame}
-	\centerline{How to make a prediction?}
-\end{frame}
 
 \subsection{Historical perspective}
 \begin{frame}{Historical perspective}
@@ -229,7 +226,7 @@
 	\centerline{We have been using Bayes' rule all the time}
 \end{frame}
 
-\begin{frame}{Weight decay .. L2 regularisation}
+\begin{frame}{Weight decay .. Ridge regression .. L2 regularisation}
 	\begin{align*}
 		-log \ posterior & =  -log \ likelihood    & - & log \ prior          & + constant \\
 		loss             & = classification \ loss & + & \lambda \sum_i w_i^2 & + constant 
@@ -241,6 +238,10 @@
 		\fitfigure{im/sgd.png}
 		\caption{But we inferred only one parameter vector}
 	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\centerline{Bayesian deep learning}
 \end{frame}
 
 \begin{frame}
@@ -290,13 +291,13 @@
 		\end{align*}
 	\end{block}
 		
-	\begin{block}{Interpretation}
-		\begin{itemize}
-			\item L2 penalty on the parameter remains
-			\item Loss function on the $\sigma$ 
-		\end{itemize}
-				
-	\end{block}
+%	\begin{block}{Interpretation}
+%		\begin{itemize}
+%			\item L2 penalty on the parameter remains
+%			\item Loss function on the $\sigma$ 
+%		\end{itemize}
+%				
+%	\end{block}
 \end{frame}
 
 
@@ -314,7 +315,7 @@
 		\item \textbf{How we do that?} \\ Bayesian inference
 		\item \textbf{How we do that?} \\ Approximate the parameter posterior
 		\item \textbf{How we do that?} \\ Find a $\mu$ and $\sigma$ per parameter
-		\item \textbf{What do we do in the end?} \\ Minimize the loss function on the previous slide
+		\item \textbf{How we do that?} \\ Minimize the loss function on the previous slide
 	\end{itemize}
 \end{frame}
 
@@ -336,6 +337,22 @@
 
 \subsection{Pruning}
 
+
+\begin{frame}
+	\begin{figure}
+		\centering
+		\includegraphics[width = 0.9\textwidth]{im/going_bayesian1.png}
+		\caption{Used with kind permission of \mdlink{Eric Ma}{https://ericmjl.github.io/}}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\begin{figure}
+		\centering
+		\includegraphics[width = 0.9\textwidth]{im/going_bayesian2.png}
+		\caption{Used with kind permission of \mdlink{Eric Ma}{https://ericmjl.github.io/}}
+	\end{figure}
+\end{frame}
 
 \begin{frame}
 	\begin{figure}
@@ -438,6 +455,7 @@
 	\begin{itemize}
 		\item Add noise
 		\item Warping
+		\item Rotation
 	\end{itemize}
 \end{frame}
 
@@ -469,15 +487,6 @@
 		\hspace*{-25mm}
 		\animategraphics[loop,controls,buttonsize=0.5em,width=1.35\textwidth]{4}{/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/im/mnist/warp/latex/experiment}{0}{49}
 		% TODO ??? fix that this works for 30 samples
-		\caption{animation only shows with media plugin (use adobe reader)}
-	\end{figure}
-\end{frame}
-
-\begin{frame}{Adding noise}
-	\begin{figure}
-		\centering
-		\hspace*{-25mm}
-		\animategraphics[loop,controls,buttonsize=0.5em,width=1.35\textwidth]{4}{/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/im/cifar/noise/latex/experiment}{0}{34}
 		\caption{animation only shows with media plugin (use adobe reader)}
 	\end{figure}
 \end{frame}
@@ -593,6 +602,15 @@
 	\begin{figure}
 		\fitfigure{im/gaussian_or_bernoulli.png}
 		\caption{Bernoulli approximation does not capture local properties}
+	\end{figure}
+\end{frame}
+
+\begin{frame}{Adding noise}
+	\begin{figure}
+		\centering
+		\hspace*{-25mm}
+		\animategraphics[loop,controls,buttonsize=0.5em,width=1.35\textwidth]{4}{/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/im/cifar/noise/latex/experiment}{0}{34}
+		\caption{animation only shows with media plugin (use adobe reader)}
 	\end{figure}
 \end{frame}
 
