@@ -1,0 +1,11 @@
+numpy==1.14.0
+pandas==0.22.0
+pandas-ml==0.5.0
+Pillow==5.0.0
+scikit-image==0.13.1
+scikit-learn==0.19.1
+scipy==1.0.0
+sklearn==0.0
+style==1.1.0
+tensorboard==1.6.0
+tensorflow-gpu==1.6.0
