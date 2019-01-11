@@ -1,0 +1,8 @@
+1. Download CIFAR and put in /cifar
+https://www.cs.toronto.edu/~kriz/cifar.html
+
+2. Download MNIST and put in /mnist 
+http://yann.lecun.com/exdb/mnist/
+
+3. Download UCR and put in /UCR
+https://www.cs.ucr.edu/~eamonn/time_series_data/
