@@ -3,9 +3,12 @@ The code in this repository implements Bayesian inference on a deep neural netwo
 
 # Getting started
 Move your console to the outer `weight_uncertainty` directory:
+
+```
 > cd weight_uncertainty   (you are now in the outer weight_uncertainty directory)
 > pip install -e .
 > python weight_uncertainty/main.py
+```
 
 These commands install the repo and run the training process
 
