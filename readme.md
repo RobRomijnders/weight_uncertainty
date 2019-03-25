@@ -1,6 +1,14 @@
 # Introduction
 The code in this repository implements Bayesian inference on a deep neural network. The repository also serves as notes for my talk at PyData Amsterdam 2018 **Bayesian Deep Learning with 10 % of the weights** 
 
+# Getting started
+Move your console to the outer `weight_uncertainty` directory:
+> cd weight_uncertainty   (you are now in the outer weight_uncertainty directory)
+> pip install -e .
+> python weight_uncertainty/main.py
+
+These commands install the repo and run the training process
+
 # Motivation
 Conventional neural networks suffer from two problems, which motivate this repository:
 
