@@ -3,22 +3,43 @@ import numpy as np
 from weight_uncertainty import conf
 from os.path import join
 import matplotlib.style as style
-style.use('fivethirtyeight')
+
+style.use("fivethirtyeight")
 
 
 def plot_pruning(prune_results):
+    """
+    Plots the pruning results, showing validation performance against prune ratio.
+
+        Args:
+            prune_results: A list of lists or a 2D array where each row contains
+                [original accuracy, prune ratio, validation accuracy].
+
+        Returns:
+            None: Displays the plot using matplotlib.pyplot.show().
+    """
     prune_data = np.array(prune_results)
-    plt.plot(prune_data[:, 1], prune_data[:, 2], 'r', label='Validation performance')
-    plt.plot([0.8999, 0.9001], [0.0, 1.0], '-', label='10% boundary')
-    plt.xlabel('Prune ratio')
-    plt.xlim([0., 1.05])
-    plt.ylim([0., 1.05])
-    plt.ylabel('Validation accuracy')
+    plt.plot(prune_data[:, 1], prune_data[:, 2], "r", label="Validation performance")
+    plt.plot([0.8999, 0.9001], [0.0, 1.0], "-", label="10% boundary")
+    plt.xlabel("Prune ratio")
+    plt.xlim([0.0, 1.05])
+    plt.ylim([0.0, 1.05])
+    plt.ylabel("Validation accuracy")
     plt.legend()
     plt.show()
 
 
 def plot_ucr(X_train, y_train):
+    """
+    Plots a selection of time series data for each class.
+
+        Args:
+            X_train: The training data (time series).
+            y_train: The training labels corresponding to the time series.
+
+        Returns:
+            None: Displays a plot showing example time series from each class.
+    """
     plot_row = 3
     all_classes = np.unique(y_train)
 
@@ -30,7 +51,7 @@ def plot_ucr(X_train, y_train):
         for n in range(plot_row):  # Loops over rows
             axarr[n, c].plot(X_train[int(ind_plot[n]), :])
             # Only chops axes for bottom row and left column
-            if not n == plot_row-1:
+            if not n == plot_row - 1:
                 plt.setp([axarr[n, c].get_xticklabels()], visible=False)
             if not c == 0:
                 plt.setp([axarr[n, c].get_yticklabels()], visible=False)

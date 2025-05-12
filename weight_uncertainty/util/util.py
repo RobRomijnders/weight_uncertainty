@@ -33,28 +33,36 @@ def make_train_op(optimizer_name, grads, tvars):
     global_step = tf.train.get_or_create_global_step()
 
     # Get the optimizer for all parameters except the sigmas
-    learning_rate_all = tf.train.exponential_decay(conf.learning_rate, global_step, 1000, 0.99)
+    learning_rate_all = tf.train.exponential_decay(
+        conf.learning_rate, global_step, 1000, 0.99
+    )
     optimizer_all = get_optimizer(optimizer_name)(learning_rate_all)
     tf.summary.scalar("Lr_all", learning_rate_all, family="Learning rates")
 
     # Get the optimizer for all the sigma parameters
-    learning_rate_std = tf.train.exponential_decay(10*conf.learning_rate, global_step, 1000, 0.99)
-    first_epoch = tf.cast(tf.greater_equal(global_step, 2000), tf.float32)  # No learning on sigmas in first epoch or so
-    optimizer_std = get_optimizer(optimizer_name)(learning_rate_std*first_epoch)
+    learning_rate_std = tf.train.exponential_decay(
+        10 * conf.learning_rate, global_step, 1000, 0.99
+    )
+    first_epoch = tf.cast(
+        tf.greater_equal(global_step, 2000), tf.float32
+    )  # No learning on sigmas in first epoch or so
+    optimizer_std = get_optimizer(optimizer_name)(learning_rate_std * first_epoch)
     tf.summary.scalar("Lr_std", learning_rate_std, family="Learning rates")
 
     # Sort the gradients
     grad_tvar_all = []
     grad_tvar_std = []
     for grad, tvar in zip(grads, tvars):
-        if 'standard_deviation' in tvar.name:
+        if "standard_deviation" in tvar.name:
             grad_tvar_std.append((grad, tvar))
         else:
             grad_tvar_all.append((grad, tvar))
 
     # Only update the global step in one of the apply_gradient() calls, otherwise there are two increments per step
-    train_op = tf.group(optimizer_all.apply_gradients(grad_tvar_all, global_step=global_step),
-                        optimizer_std.apply_gradients(grad_tvar_std))
+    train_op = tf.group(
+        optimizer_all.apply_gradients(grad_tvar_all, global_step=global_step),
+        optimizer_std.apply_gradients(grad_tvar_std),
+    )
 
     # if optimizer_name == 'adam':
     #     plot_grad_tensorboard([(optimizer_all, grad_tvar_all), (optimizer_std, grad_tvar_std)])
@@ -82,6 +90,12 @@ def make_train_op(optimizer_name, grads, tvars):
 
 
 class MixturePrior(object):
+    """
+    Implements a scale mixture prior as described in "Weight uncertainty of neural networks".
+
+    This class allows for computing the KL divergence between a Gaussian distribution and the defined prior.
+    """
+
     def __init__(self, sigma_prior):
         """
         Set up a scale mixture prior according to section 3.3 in
@@ -93,16 +107,32 @@ class MixturePrior(object):
         self.sigma_prior = sigma_prior
 
     def get_kl_divergence(self, gaussian1):
+        """
+        Computes the KL divergence between a Gaussian distribution and the prior.
+
+          Args:
+            gaussian1: A tuple containing the mean and standard deviation of the
+              Gaussian distribution.
+
+          Returns:
+            A float representing the KL divergence.
+        """
         # because the other compute_kl does log(sigma) and this is already set
         mean1, sigma1 = gaussian1
         mean2, sigma2 = self.mean, self.sigma_prior
 
-        kl_divergence = tf.log(sigma2) - tf.log(sigma1) + ((tf.square(sigma1) +
-                                                            tf.square(mean1 - mean2)) / (2 * tf.square(sigma2))) - 0.5
+        kl_divergence = (
+            tf.log(sigma2)
+            - tf.log(sigma1)
+            + ((tf.square(sigma1) + tf.square(mean1 - mean2)) / (2 * tf.square(sigma2)))
+            - 0.5
+        )
         return tf.reduce_mean(kl_divergence)
 
 
-def print_validation_performance(step, model, dataloader, train_writer, loss_train, kl_loss_train):
+def print_validation_performance(
+    step, model, dataloader, train_writer, loss_train, kl_loss_train
+):
     """
     Lots of printing and logging
     :param step:
@@ -114,50 +144,82 @@ def print_validation_performance(step, model, dataloader, train_writer, loss_tra
     :return:
     """
     sess = tf.get_default_session()
-    x, y = dataloader.sample('val')
+    x, y = dataloader.sample("val")
     feed_dict = {model.x_placeholder: x, model.y_placeholder: y}
-    fetch_list = [model.loss,
-                  model.kl_loss,
-                  model.accuracy,
-                  model.total_bits,
-                  model.summary_op]
-    loss_val, kl_loss_val, acc_val, total_bits, summ_str = sess.run(fetches=fetch_list, feed_dict=feed_dict)
+    fetch_list = [
+        model.loss,
+        model.kl_loss,
+        model.accuracy,
+        model.total_bits,
+        model.summary_op,
+    ]
+    loss_val, kl_loss_val, acc_val, total_bits, summ_str = sess.run(
+        fetches=fetch_list, feed_dict=feed_dict
+    )
     train_writer.add_summary(summ_str, step)
     train_writer.flush()
 
-    print(f'At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:9.2f}/{loss_val:9.2f}'
-          f'KL loss {kl_loss_train:6.3f}/{kl_loss_val:6.3f} and val accuracy {acc_val:6.3f} '
-          f'and total bits {total_bits:8.3f}')
+    print(
+        f"At step {step:6.0f}/{conf.max_steps:6.0f} Train/Val: loss {loss_train:9.2f}/{loss_val:9.2f}"
+        f"KL loss {kl_loss_train:6.3f}/{kl_loss_val:6.3f} and val accuracy {acc_val:6.3f} "
+        f"and total bits {total_bits:8.3f}"
+    )
 
 
 class RestoredModel:
+    """
+    RestoredModel class for loading, evaluating, and pruning a TensorFlow model.
+
+    This class provides methods to load a pre-trained TensorFlow model, evaluate its performance,
+    make predictions with uncertainty estimates, and prune weights based on a specified threshold.
+    """
+
     def __init__(self, model_name):
+        """
+        Initializes the Pruner object by loading a TensorFlow model and setting up pruning operations.
+
+            Args:
+                model_name: The base name of the saved TensorFlow model (without the '.meta' extension).
+
+            Returns:
+                None
+        """
         # Create local graph and use it in the session
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
         with self.graph.as_default():
             # Import saved model from model_name into local graph
-            saver = tf.train.import_meta_graph(model_name + '.meta', clear_devices=True)
+            saver = tf.train.import_meta_graph(model_name + ".meta", clear_devices=True)
             saver.restore(self.sess, model_name)
 
             # Set all the ops:
-            self.input, self.target, self.prediction, self.loss, self.accuracy = tf.get_collection('restore_vars')
+            self.input, self.target, self.prediction, self.loss, self.accuracy = (
+                tf.get_collection("restore_vars")
+            )
 
             # Add pruning nodes
-            self.prune_threshold = tf.placeholder(tf.float32, name='prune_threshold')
+            self.prune_threshold = tf.placeholder(tf.float32, name="prune_threshold")
             prune_op_list = []
             mask_ratios = []
-            for mean, sigma, mask_ref in zip(tf.get_collection('random_mean'),
-                                             tf.get_collection('all_sigma'),
-                                             tf.get_collection('masks')):
-                log_p_zero = -0.5 * tf.square(mean / sigma) - tf.log(tf.sqrt(2 * np.pi) * sigma)
+            for mean, sigma, mask_ref in zip(
+                tf.get_collection("random_mean"),
+                tf.get_collection("all_sigma"),
+                tf.get_collection("masks"),
+            ):
+                log_p_zero = -0.5 * tf.square(mean / sigma) - tf.log(
+                    tf.sqrt(2 * np.pi) * sigma
+                )
                 # The mask is zero when the posterior probability is greater than threshold
-                mask = tf.cast(tf.less_equal(log_p_zero, self.prune_threshold), tf.float32)
+                mask = tf.cast(
+                    tf.less_equal(log_p_zero, self.prune_threshold), tf.float32
+                )
                 mask_ratios.append(tf.reduce_mean(mask))
-                prune_op_list.append(tf.assign(mask_ref, mask))  # The assign op sets the parameters to zero
+                prune_op_list.append(
+                    tf.assign(mask_ref, mask)
+                )  # The assign op sets the parameters to zero
             # Log the pruning ratio as it is a result of the threshold
-            self.prune_ratio = tf.reduce_mean(mask_ratios, name='prune_ratio')
-            self.prune_op = tf.group(prune_op_list, name='prune_op')
+            self.prune_ratio = tf.reduce_mean(mask_ratios, name="prune_ratio")
+            self.prune_op = tf.group(prune_op_list, name="prune_op")
 
     def evaluate(self, x, y):
         """
@@ -187,7 +249,9 @@ class RestoredModel:
         # Iterator for the predictions
         def make_predictions(input_tensor):
             for _ in range(num_runs):
-                yield self.sess.run(self.prediction, feed_dict={self.input: input_tensor})
+                yield self.sess.run(
+                    self.prediction, feed_dict={self.input: input_tensor}
+                )
 
         # Stack all predictions over the first axis
         return np.stack(make_predictions(x), axis=0)
@@ -205,10 +269,30 @@ class RestoredModel:
         return ave_pred, risks[0]
 
     def prune(self, threshold):
-        return self.sess.run([self.prune_op, self.prune_ratio], {self.prune_threshold: threshold})[1]
+        """
+        Prunes the model based on a given threshold.
+
+          Args:
+            threshold: The pruning threshold to use.
+
+          Returns:
+            float: The ratio of weights pruned during this operation.
+        """
+        return self.sess.run(
+            [self.prune_op, self.prune_ratio], {self.prune_threshold: threshold}
+        )[1]
 
 
 def maybe_make_dir(dirname):
+    """
+    Creates a directory if it does not already exist.
+
+        Args:
+            dirname: The path to the directory to create.
+
+        Returns:
+            None
+    """
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
@@ -220,7 +304,7 @@ def reduce_entropy(X, axis=-1):
     :param axis:
     :return:
     """
-    return -1 * np.sum(X * np.log(X+1E-12), axis=axis)
+    return -1 * np.sum(X * np.log(X + 1e-12), axis=axis)
 
 
 def calc_risk(preds, labels=None):
@@ -244,7 +328,9 @@ def calc_risk(preds, labels=None):
 
     # Expected entropy of the predictive under the parameter posterior
     entropy_exp = np.mean(reduce_entropy(preds, axis=2), axis=0)
-    mutual_info = entropy - entropy_exp  # Equation 2 of https://arxiv.org/pdf/1711.08244.pdf
+    mutual_info = (
+        entropy - entropy_exp
+    )  # Equation 2 of https://arxiv.org/pdf/1711.08244.pdf
 
     # Average and variance of softmax for the predicted class
     variance = np.std(preds[:, range(num_batch), pred_class], 0)

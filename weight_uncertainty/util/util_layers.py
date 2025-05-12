@@ -40,24 +40,25 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
     std_init = tf.random_uniform_initializer(rho_min_init, rho_max_init)
 
     # Initialize the mean
-    mean = tf.get_variable(name + "_mean", shape,
-                           dtype=dtype)
-    tf.add_to_collection('random_mean', mean)
+    mean = tf.get_variable(name + "_mean", shape, dtype=dtype)
+    tf.add_to_collection("random_mean", mean)
     mean += prior_mean
 
     # Initialize the standard deviation
-    standard_deviation = tf.get_variable(name + "_standard_deviation", shape,
-                                         initializer=std_init,
-                                         dtype=dtype)
-    tf.add_to_collection('random_presigma', standard_deviation)
+    standard_deviation = tf.get_variable(
+        name + "_standard_deviation", shape, initializer=std_init, dtype=dtype
+    )
+    tf.add_to_collection("random_presigma", standard_deviation)
 
     standard_deviation = tf.nn.softplus(standard_deviation) + 1e-5
-    tf.add_to_collection('all_sigma', standard_deviation)
-    tf.summary.scalar(name + '_sigma', tf.reduce_mean(standard_deviation), family='sigma')
+    tf.add_to_collection("all_sigma", standard_deviation)
+    tf.summary.scalar(
+        name + "_sigma", tf.reduce_mean(standard_deviation), family="sigma"
+    )
 
     # Prepare masking tensors in case we want to prune
-    mask = tf.get_variable(name + '_mask', shape=shape, initializer=tf.ones_initializer)
-    tf.add_to_collection('masks', mask)
+    mask = tf.get_variable(name + "_mask", shape=shape, initializer=tf.ones_initializer)
+    tf.add_to_collection("masks", mask)
 
     weights = mean + (standard_deviation * tf.random_normal(shape, 0.0, 1.0, dtype))
 
@@ -65,6 +66,14 @@ def get_random_normal_variable(name, prior, shape, prior_mean=0.0, dtype=tf.floa
 
 
 class SoftmaxLayer:
+    """
+    Final linear layer that maps any input to a tensor of [batch_size x num_classes].
+
+        Attributes:
+            num_classes: The number of classes.
+            prior: The prior distribution.
+    """
+
     def __init__(self, num_classes, prior):
         """
         Final linear layer that maps any input to a tensor of [batch_size x num_classes]
@@ -80,7 +89,9 @@ class SoftmaxLayer:
         :return:
         """
         theta_kl = self.prior.get_kl_divergence((self.softmax_w_mu, self.softmax_w_std))
-        theta_kl += self.prior.get_kl_divergence((self.softmax_b_mu, self.softmax_b_std))
+        theta_kl += self.prior.get_kl_divergence(
+            (self.softmax_b_mu, self.softmax_b_std)
+        )
         return theta_kl
 
     def __call__(self, inputs):
@@ -91,28 +102,49 @@ class SoftmaxLayer:
         """
         tf.assert_rank(inputs, 2)
         out_dim = inputs.shape[1]
-        self.softmax_w, self.softmax_w_mu, self.softmax_w_std = get_random_normal_variable("softmax_w", self.prior,
-                                                                            tf.TensorShape([out_dim, self.num_classes]),
-                                                                            dtype=tf.float32)
-        self.softmax_b, self.softmax_b_mu, self.softmax_b_std = get_random_normal_variable("softmax_b", self.prior,
-                                                                            [self.num_classes],
-                                                                            dtype=tf.float32)
+        self.softmax_w, self.softmax_w_mu, self.softmax_w_std = (
+            get_random_normal_variable(
+                "softmax_w",
+                self.prior,
+                tf.TensorShape([out_dim, self.num_classes]),
+                dtype=tf.float32,
+            )
+        )
+        self.softmax_b, self.softmax_b_mu, self.softmax_b_std = (
+            get_random_normal_variable(
+                "softmax_b", self.prior, [self.num_classes], dtype=tf.float32
+            )
+        )
 
         logits = tf.matmul(inputs, self.softmax_w) + self.softmax_b
 
         # Add kl losses to the collection
-        tf.add_to_collection('kl_losses', self.get_kl())
+        tf.add_to_collection("kl_losses", self.get_kl())
         return logits
 
 
 class BayesianConvCell:
-    def __init__(self,
-                 name,
-                 num_filters,
-                 filter_shape,
-                 stride,
-                 prior,
-                 activation=None):
+    """
+    Bayesian Convolutional Layer.
+
+    This class implements a convolutional layer with Bayesian weights, allowing for uncertainty estimation in the model's predictions. It samples weights from a prior distribution and calculates the KL divergence as regularization.
+    """
+
+    def __init__(self, name, num_filters, filter_shape, stride, prior, activation=None):
+        """
+        Initializes a new layer.
+
+            Args:
+                name: The name of the layer.
+                num_filters: The number of filters in the layer.
+                filter_shape: The shape of the filters.
+                stride: The stride of the layer.
+                prior: The prior distribution for the weights.
+                activation: The activation function to use (optional).
+
+            Returns:
+                None
+        """
         self.name = name
         self.num_filters = num_filters
         self.filter_shape = filter_shape
@@ -130,23 +162,49 @@ class BayesianConvCell:
         return theta_kl
 
     def __call__(self, inputs):
-        with tf.variable_scope(self.name):  # Call in a variable scope, because we deal with different layers
-            filter_shape = tf.TensorShape(self.filter_shape + [inputs.shape[-1], self.num_filters])
+        """
+        Applies a convolutional layer with Bayesian weights.
+
+            This method performs a 2D convolution operation on the input tensor using
+            Bayesian weights (mean and standard deviation) sampled from a prior distribution.
+            It also calculates and adds the KL divergence loss to a collection for later use.
+
+            Args:
+                inputs: The input tensor to be convolved.
+
+            Returns:
+                The output tensor after applying the convolution and activation function.
+        """
+        with tf.variable_scope(
+            self.name
+        ):  # Call in a variable scope, because we deal with different layers
+            filter_shape = tf.TensorShape(
+                self.filter_shape + [inputs.shape[-1], self.num_filters]
+            )
 
             # Both the W and B are random normal variables
-            self.W, self.W_mu, self.W_std = get_random_normal_variable('conv_weight',
-                                                                       self.prior,
-                                                                       shape=filter_shape)
-            self.b, self.b_mu, self.b_std = get_random_normal_variable('conv_bias', self.prior,
-                                                                       shape=[self.num_filters])
+            self.W, self.W_mu, self.W_std = get_random_normal_variable(
+                "conv_weight", self.prior, shape=filter_shape
+            )
+            self.b, self.b_mu, self.b_std = get_random_normal_variable(
+                "conv_bias", self.prior, shape=[self.num_filters]
+            )
 
         # Vertical stride depends on if we are a time series or not
         vert_stride = 1 if 1 in self.filter_shape else self.stride
-        act = conv2d(inputs, filter=self.W, strides=[1, self.stride, vert_stride, 1],
-                     padding='SAME', data_format='NHWC') + self.b
+        act = (
+            conv2d(
+                inputs,
+                filter=self.W,
+                strides=[1, self.stride, vert_stride, 1],
+                padding="SAME",
+                data_format="NHWC",
+            )
+            + self.b
+        )
 
         # Add kl losses to the collection
-        tf.add_to_collection('kl_losses', self.get_kl())
+        tf.add_to_collection("kl_losses", self.get_kl())
         return self.activation(act)
 
 
@@ -155,14 +213,34 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
     Implementation of Bayesian LSTM Cell from
     https://gist.github.com/windweller/500ddc19d0c3cf1eb03cf73cc6b88fe3/revisions
     """
-    def __init__(self, num_units,
-                 prior,
-                 forget_bias=1.0,
-                 state_is_tuple=True,
-                 layer_norm=True,
-                 norm_gain=1.0,
-                 norm_shift=0.0,
-                 activation=tf.tanh):
+
+    def __init__(
+        self,
+        num_units,
+        prior,
+        forget_bias=1.0,
+        state_is_tuple=True,
+        layer_norm=True,
+        norm_gain=1.0,
+        norm_shift=0.0,
+        activation=tf.tanh,
+    ):
+        """
+        Initializes a BayesianLSTMCell.
+
+            Args:
+                num_units: The number of units in the LSTM cell.
+                prior: The prior distribution for the weights and biases.
+                forget_bias: Bias added to the forget gate (default 1.0).
+                state_is_tuple: Whether the state is a tuple or a list (default True).
+                layer_norm: If layer normalization should be used (default True).
+                norm_gain: Gain for layer normalization (default 1.0).
+                norm_shift: Shift for layer normalization (default 0.0).
+                activation: The activation function to use (default tf.tanh).
+
+            Returns:
+                None
+        """
 
         # once generated they stay the same across time-steps
         # must construct different cell for each layer
@@ -176,10 +254,12 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
         self._norm_gain = norm_gain
         self._norm_shift = norm_shift
 
-        super(BayesianLSTMCell, self).__init__(num_units=num_units,
-                                               forget_bias=forget_bias,
-                                               state_is_tuple=state_is_tuple,
-                                               activation=activation)  # input_size
+        super(BayesianLSTMCell, self).__init__(
+            num_units=num_units,
+            forget_bias=forget_bias,
+            state_is_tuple=state_is_tuple,
+            activation=activation,
+        )  # input_size
 
     # we'll see if this implementation is correct
     def get_W(self, total_arg_size, output_size, dtype):
@@ -195,8 +275,9 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
         with tf.variable_scope("CellWeight"):
             if self.W is None:
                 # can use its own init_scale
-                self.W, self.W_mu, self.W_std = get_random_normal_variable("Matrix", self.prior,
-                                                                           [total_arg_size, output_size], dtype=dtype)
+                self.W, self.W_mu, self.W_std = get_random_normal_variable(
+                    "Matrix", self.prior, [total_arg_size, output_size], dtype=dtype
+                )
         return self.W
 
     def get_b(self, output_size, dtype):
@@ -210,8 +291,9 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
         """
         with tf.variable_scope("CellBias"):
             if self.b is None:
-                self.b, self.b_mu, self.b_std = get_random_normal_variable("Bias", self.prior,
-                                                                           [output_size], dtype=dtype)
+                self.b, self.b_mu, self.b_std = get_random_normal_variable(
+                    "Bias", self.prior, [output_size], dtype=dtype
+                )
         return self.b
 
     def get_kl(self):
@@ -224,6 +306,17 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
         return theta_kl
 
     def _norm(self, inp, scope, dtype=dtypes.float32):
+        """
+        Normalizes the input using layer normalization.
+
+            Args:
+                inp: The input tensor to normalize.
+                scope: A string representing the scope for variable creation.
+                dtype: The data type of the variables. Defaults to float32.
+
+            Returns:
+                A tensor with the same shape as inp, normalized using layer norm.
+        """
         shape = inp.get_shape()[-1:]
         gamma_init = init_ops.constant_initializer(self._norm_gain)
         beta_init = init_ops.constant_initializer(self._norm_shift)
@@ -234,7 +327,28 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
         normalized = layers.layer_norm(inp, reuse=True, scope=scope)
         return normalized
 
-    def stochastic_linear(self, args, output_size, bias=True, bias_start=0.0, scope=None):
+    def stochastic_linear(
+        self, args, output_size, bias=True, bias_start=0.0, scope=None
+    ):
+        """
+        Applies a linear transformation to the input arguments.
+
+            This method performs a linear transformation using a matrix and optional bias.
+            It supports both single and multiple input arguments by concatenating them
+            along axis 1 before applying the transformation. It uses a local
+            reparameterization trick for stochasticity.
+
+            Args:
+                args: The input tensor(s) to be transformed. Can be a single tensor or a list/tuple of tensors.
+                output_size: The desired output size (number of columns in the weight matrix).
+                bias: A boolean indicating whether to add a bias term. Defaults to True.
+                bias_start: The initial value for the bias term. Defaults to 0.0.
+                scope: An optional scope for the variable creation. Defaults to "Linear".
+
+            Returns:
+                A tensor representing the result of the linear transformation, with shape
+                (batch_size, output_size).
+        """
         # Local reparameterization trick
         if args is None or (nest.is_sequence(args) and not args):
             raise ValueError("`args` must be specified")
@@ -248,7 +362,9 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
             if len(shape) != 2:
                 raise ValueError("Linear is expecting 2D arguments: %s" % str(shapes))
             if not shape[1]:
-                raise ValueError("Linear expects shape[1] of arguments: %s" % str(shapes))
+                raise ValueError(
+                    "Linear expects shape[1] of arguments: %s" % str(shapes)
+                )
             else:
                 total_arg_size += shape[1]
 
@@ -276,7 +392,9 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
                 c, h = state
             else:
                 one = constant_op.constant(1, dtype=dtypes.int32)
-                c, h = array_ops.split(value=state, num_or_size_splits=2, axis=one)  # tf.split(state, 2, axis=1
+                c, h = array_ops.split(
+                    value=state, num_or_size_splits=2, axis=one
+                )  # tf.split(state, 2, axis=1
             concat = self.stochastic_linear([inputs, h], 4 * self._num_units, True)
 
             # i = input_gate, j = new_input, f = forget_gate, o = output_gate
@@ -287,8 +405,9 @@ class BayesianLSTMCell(tf.nn.rnn_cell.BasicLSTMCell):
                 f = self._norm(f, "forget", dtype=inputs.dtype)
                 o = self._norm(o, "output", dtype=inputs.dtype)
 
-            new_c = (c * tf.sigmoid(f + self._forget_bias) + tf.sigmoid(i) *
-                              tf.nn.tanh(j))
+            new_c = c * tf.sigmoid(f + self._forget_bias) + tf.sigmoid(i) * tf.nn.tanh(
+                j
+            )
             new_h = tf.nn.tanh(new_c) * tf.sigmoid(o)
 
             if self._state_is_tuple:

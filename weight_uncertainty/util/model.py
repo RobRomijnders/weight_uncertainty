@@ -1,5 +1,9 @@
 from weight_uncertainty.util.util import MixturePrior, make_train_op
-from weight_uncertainty.util.util_layers import BayesianLSTMCell, BayesianConvCell, SoftmaxLayer
+from weight_uncertainty.util.util_layers import (
+    BayesianLSTMCell,
+    BayesianConvCell,
+    SoftmaxLayer,
+)
 from weight_uncertainty import conf
 
 import tensorflow as tf
@@ -7,10 +11,36 @@ import numpy as np
 
 
 class Model(object):
+    """
+    A class representing a neural network model.
+
+        This class provides methods for building and configuring different layers
+        of a neural network, including CNNs and RNNs, and preparing the model
+        for training and evaluation."""
+
     def __init__(self, num_classes, size_sample):
+        """
+        Initializes the model.
+
+            Args:
+                num_classes (int): The number of classes for classification.
+                size_sample (list): The shape of a single input sample
+                                    (e.g., [28, 28, 1] for images).
+
+            Returns:
+                None: This method initializes the TensorFlow graph and does not return a value.
+        """
         # Set up the placeholders
-        self.x_placeholder = tf.placeholder(tf.float32, [None] + list(size_sample), name='input')
-        self.y_placeholder = tf.placeholder(tf.int32, [None, ], name='target')
+        self.x_placeholder = tf.placeholder(
+            tf.float32, [None] + list(size_sample), name="input"
+        )
+        self.y_placeholder = tf.placeholder(
+            tf.int32,
+            [
+                None,
+            ],
+            name="target",
+        )
 
         # Instantiate a prior over the weights
         self.prior = MixturePrior(conf.sigma_prior)
@@ -29,17 +59,19 @@ class Model(object):
         logits = self.softmax_layer(outputs, num_classes)
 
         # And softmax them to get proper predictions between [0, 1]
-        self.predictions = tf.nn.softmax(logits, name='predictions')
+        self.predictions = tf.nn.softmax(logits, name="predictions")
 
         # --- The rest is all about losses and tensorflow bookkeeping ---
 
         # Classification loss
-        class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.y_placeholder)
-        self.loss = tf.identity(tf.reduce_mean(class_loss), name='classification_loss')
+        class_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=logits, labels=self.y_placeholder
+        )
+        self.loss = tf.identity(tf.reduce_mean(class_loss), name="classification_loss")
 
         # KL loss
         # Sum the KL losses from the collection. This just simplifies the handling of loss elements
-        self.kl_loss = tf.add_n(tf.get_collection('kl_losses'))
+        self.kl_loss = tf.add_n(tf.get_collection("kl_losses"))
 
         # Weigh the kl loss across all the batches
         # See equation 9 in
@@ -48,8 +80,14 @@ class Model(object):
         # pi = 1./num_batches
         # Both the Weight uncertainty paper and "Practical Variational Inference for Neural Networks" recommend to
         # anneal pi during training. I found that ramping up works best
-        pi = ramp_and_clip(1/10000., max((1/10., conf.batch_size / conf.num_samples)), 3000, 20000, global_step=None)
-        total_loss = self.loss + pi*self.kl_loss
+        pi = ramp_and_clip(
+            1 / 10000.0,
+            max((1 / 10.0, conf.batch_size / conf.num_samples)),
+            3000,
+            20000,
+            global_step=None,
+        )
+        total_loss = self.loss + pi * self.kl_loss
 
         # Set up the optimizer
         tvars = tf.trainable_variables()
@@ -68,18 +106,23 @@ class Model(object):
 
         # Calculate accuracy
         decisions = tf.argmax(logits, axis=1, output_type=tf.int32)
-        self.accuracy = tf.reduce_mean(tf.cast(tf.equal(decisions, self.y_placeholder), tf.float32), name='accuracy')
+        self.accuracy = tf.reduce_mean(
+            tf.cast(tf.equal(decisions, self.y_placeholder), tf.float32),
+            name="accuracy",
+        )
 
         # Add summaries for tensorboard if desired
         self.add_tensorboard_summaries(grads_norm)
 
         # Calculate total number of bits. Useful to get some intuition for the compression
         self.total_bits = tf.constant(0.0, dtype=tf.float32)
-        sigma_collection = tf.get_collection('all_sigma')
+        sigma_collection = tf.get_collection("all_sigma")
         for sigm in sigma_collection:
-            self.total_bits += tf.reduce_mean(tf.log(sigm) / tf.log(2.))
-        self.total_bits = tf.identity(self.total_bits, "total_bits") / len(sigma_collection)
-        tf.summary.scalar('Total bits', self.total_bits)
+            self.total_bits += tf.reduce_mean(tf.log(sigm) / tf.log(2.0))
+        self.total_bits = tf.identity(self.total_bits, "total_bits") / len(
+            sigma_collection
+        )
+        tf.summary.scalar("Total bits", self.total_bits)
 
         # Finally the usual necessary Tensorflow ops
         self.summary_op = tf.summary.merge_all()
@@ -87,32 +130,59 @@ class Model(object):
         self.init_op = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
         self.add_to_collections()
-        print('Finished model')
+        print("Finished model")
 
     def add_RNN(self):
+        """
+        Adds a recurrent neural network (RNN) to the model.
+
+            This method creates and applies an RNN composed of BayesianLSTM cells,
+            calculates KL losses for each cell, and returns the final state output
+            for classification.
+
+            Args:
+                None
+
+            Returns:
+                tf.Tensor: The final state output of the RNN, suitable for classification.
+        """
         inputs = tf.unstack(tf.expand_dims(self.x_placeholder, axis=1), axis=2)
         # Stack many BayesianLSTMCells
         # Note that by this call, the epsilon is equal for all time steps
         layers = []
         for _ in range(conf.num_layers):
-            lstm_cell = BayesianLSTMCell(conf.hidden_dim, self.prior,
-                                         forget_bias=1.0, state_is_tuple=True, layer_norm=False)
+            lstm_cell = BayesianLSTMCell(
+                conf.hidden_dim,
+                self.prior,
+                forget_bias=1.0,
+                state_is_tuple=True,
+                layer_norm=False,
+            )
             layers.append(lstm_cell)
 
         cell = tf.nn.rnn_cell.MultiRNNCell(layers, state_is_tuple=True)
 
         # Make the RNN
         with tf.variable_scope("RNN"):
-            outputs, state = tf.nn.static_rnn(cell, inputs,
-                                              dtype=tf.float32)
+            outputs, state = tf.nn.static_rnn(cell, inputs, dtype=tf.float32)
 
         for layer in layers:
             # Add kl losses to the collection
-            tf.add_to_collection('kl_losses', layer.get_kl())
+            tf.add_to_collection("kl_losses", layer.get_kl())
         outputs = outputs[-1]  # Perform classification on the final state
         return outputs
 
     def add_CNN(self):
+        """
+        Adds a convolutional neural network to the model.
+
+            Args:
+                None
+
+            Returns:
+                tf.Tensor: The reshaped output of the CNN, with shape [-1, num_features],
+                           where num_features is determined by the CNN's configuration and input.
+        """
         if self.is_time_series:
             # We will still use 2D convolutions for time series. So we expand dims
             inputs = tf.expand_dims(tf.expand_dims(self.x_placeholder, axis=2), axis=3)
@@ -123,18 +193,24 @@ class Model(object):
 
         # Create the layers of the CNN in a loop :)
         for i, num_filt in enumerate(conf.num_filters):
-            conv_layer = BayesianConvCell(f'conv{i}',
-                                          num_filters=num_filt,
-                                          filter_shape=filter_shape,
-                                          stride=conf.stride,
-                                          prior=self.prior,
-                                          activation=tf.nn.selu)
+            conv_layer = BayesianConvCell(
+                f"conv{i}",
+                num_filters=num_filt,
+                filter_shape=filter_shape,
+                stride=conf.stride,
+                prior=self.prior,
+                activation=tf.nn.selu,
+            )
             inputs = conv_layer(inputs)
         final_output = inputs
 
         # Some final reshaping
-        final_output_shape = final_output.shape  # Final shape depends on the number of layers, stride and kernel size
-        return tf.reshape(final_output, shape=[-1, final_output_shape[1:].num_elements()])
+        final_output_shape = (
+            final_output.shape
+        )  # Final shape depends on the number of layers, stride and kernel size
+        return tf.reshape(
+            final_output, shape=[-1, final_output_shape[1:].num_elements()]
+        )
 
     def softmax_layer(self, outputs, num_classes):
         """
@@ -159,8 +235,10 @@ class Model(object):
             tf.summary.scalar("grads_norm", grads_norm)
             tf.summary.scalar("accuracy", self.accuracy)
 
-        self.all_sigma = tf.concat([tf.reshape(s, [-1]) for s in tf.get_collection('all_sigma')], axis=0)
-        tf.summary.histogram('Sigmas', self.all_sigma, family='sigmas')
+        self.all_sigma = tf.concat(
+            [tf.reshape(s, [-1]) for s in tf.get_collection("all_sigma")], axis=0
+        )
+        tf.summary.histogram("Sigmas", self.all_sigma, family="sigmas")
 
     def add_to_collections(self):
         """
@@ -169,12 +247,14 @@ class Model(object):
         TENSORFLOW MAGIC ...
         :return:
         """
-        for var in [self.x_placeholder,
-                    self.y_placeholder,
-                    self.predictions,
-                    self.loss,
-                    self.accuracy]:
-            tf.add_to_collection('restore_vars', var)
+        for var in [
+            self.x_placeholder,
+            self.y_placeholder,
+            self.predictions,
+            self.loss,
+            self.accuracy,
+        ]:
+            tf.add_to_collection("restore_vars", var)
 
 
 def ramp_and_clip(value_start, value_stop, step_start, step_stop, global_step=None):
@@ -193,10 +273,14 @@ def ramp_and_clip(value_start, value_stop, step_start, step_stop, global_step=No
     """
     if not global_step:
         global_step = tf.train.get_or_create_global_step()
-    pi = value_start + (value_stop - value_start) * \
-                tf.clip_by_value(1. / (step_stop- step_start) * \
-                (tf.cast(global_step, tf.float32) - step_start), 0., 1.)
+    pi = value_start + (value_stop - value_start) * tf.clip_by_value(
+        1.0
+        / (step_stop - step_start)
+        * (tf.cast(global_step, tf.float32) - step_start),
+        0.0,
+        1.0,
+    )
 
     # And add a summary to tensorboard
-    tf.summary.scalar('pi', pi, family='summaries')
+    tf.summary.scalar("pi", pi, family="summaries")
     return pi

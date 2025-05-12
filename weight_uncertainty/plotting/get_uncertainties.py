@@ -10,23 +10,42 @@ from collections import OrderedDict
 
 
 def main(dataloader):
+    """
+    Runs experiments to calculate risk metrics for model robustness.
+
+        This method loads a pre-trained model, iterates through defined experiments
+        in the configuration file, applies various mutilations to input images,
+        and calculates associated risk metrics like entropy, mutual information,
+        variance, and softmax values.  The results are then saved to disk.
+
+        Args:
+            dataloader: An object providing access to test data samples.
+
+        Returns:
+            None
+    """
     # Load the model
     model = RestoredModel(conf.restore_direc)
-    mc_type = 'vif'
+    mc_type = "vif"
 
     # Make directory for logging
-    maybe_make_dir('log_risk')
+    maybe_make_dir("log_risk")
 
     # Do many runs
     im_test, lbl_test = dataloader.sample()
 
     # Double check if it has sensible performance
     lbl_pred, _ = model.predict(im_test)
-    print(f'Accuracy is {np.mean(np.equal(lbl_test, np.argmax(lbl_pred, axis=1)))}')
+    print(f"Accuracy is {np.mean(np.equal(lbl_test, np.argmax(lbl_pred, axis=1)))}")
 
     # Loop over the many experiments. See the .ini for how they are defined
-    for mutilation_name, var_name, low_value, high_value in conf.experiments:  # Read from the experiment method
-        if conf.dataset == 'cifar' and var_name != 'sigma':
+    for (
+        mutilation_name,
+        var_name,
+        low_value,
+        high_value,
+    ) in conf.experiments:  # Read from the experiment method
+        if conf.dataset == "cifar" and var_name != "sigma":
             continue
         # Find the mutilation function. Maybe not so beautiful code, but it works
         mutilation_function = globals()[mutilation_name]
@@ -35,7 +54,9 @@ def main(dataloader):
         risks = []
         all_mutilated_images = []
         # Increase the value by which we mutilate
-        for i, mutilated_value in enumerate(np.linspace(low_value, high_value, conf.num_experiments)):
+        for i, mutilated_value in enumerate(
+            np.linspace(low_value, high_value, conf.num_experiments)
+        ):
             # Mutilate the image and put it to PyTorch on GPU
             mutilated_images = mutilation_function(np.copy(im_test), mutilated_value)
 
@@ -43,33 +64,73 @@ def main(dataloader):
             preds = model.sample_prediction(mutilated_images, conf.num_runs)
 
             # Calculate all the risks
-            entropy, mutual_info, variance, softmax_val, correct = calc_risk(preds, lbl_test)
+            entropy, mutual_info, variance, softmax_val, correct = calc_risk(
+                preds, lbl_test
+            )
             risks.append(
-                (mutilated_value * np.ones_like(entropy), entropy, mutual_info, variance, softmax_val, correct))
+                (
+                    mutilated_value * np.ones_like(entropy),
+                    entropy,
+                    mutual_info,
+                    variance,
+                    softmax_val,
+                    correct,
+                )
+            )
 
             # Do all the printing and saving and bookkeeping
-            print(f'At {var_name} {mutilated_value:8.3f} entropy {np.mean(entropy):5.3f} '
-                  f'and mutual info {np.mean(mutual_info):5.3f} and variance {np.mean(variance):5.3f} '
-                  f'and ave softmax {np.mean(softmax_val):5.3f} and accuracy {np.mean(correct):5.3f}')
+            print(
+                f"At {var_name} {mutilated_value:8.3f} entropy {np.mean(entropy):5.3f} "
+                f"and mutual info {np.mean(mutual_info):5.3f} and variance {np.mean(variance):5.3f} "
+                f"and ave softmax {np.mean(softmax_val):5.3f} and accuracy {np.mean(correct):5.3f}"
+            )
             all_mutilated_images.append(mutilated_images)
-        np.save('log_risk/%s.mc_%s.im.npy' % (mutilation_name, mc_type), np.stack(all_mutilated_images))
-        np.save('log_risk/%s.mc_%s.risks.npy' % (mutilation_name, mc_type), np.array(risks))
+        np.save(
+            "log_risk/%s.mc_%s.im.npy" % (mutilation_name, mc_type),
+            np.stack(all_mutilated_images),
+        )
+        np.save(
+            "log_risk/%s.mc_%s.risks.npy" % (mutilation_name, mc_type), np.array(risks)
+        )
 
 
 def plot_risks():
-    maybe_make_dir('im')
+    """
+    Plots risk metrics from log files.
 
-    filenames = glob.glob('log_risk/*.*.risks.npy')
-    assert len(filenames) > 0, 'Did not find any logs'
+        This function loads risk data from numpy arrays saved in the 'log_risk' directory,
+        plots them for each experiment and risk type, and saves the resulting figure to
+        'im/{conf.dataset}/risks.png'.
 
-    var2idx = {exp[0]: i for i, exp in enumerate(conf.experiments)}  # Maps experiment names to rows in the plotting
-    colors = {'mc_dropout': 'g',
-              'mc_multi': 'b',
-              'mc_lang': 'r',
-              'mc_vif': 'm'}  # Dictionarly to map types of MC to colors for plotting
+        Args:
+            None
+
+        Returns:
+            None
+    """
+    maybe_make_dir("im")
+
+    filenames = glob.glob("log_risk/*.*.risks.npy")
+    assert len(filenames) > 0, "Did not find any logs"
+
+    var2idx = {
+        exp[0]: i for i, exp in enumerate(conf.experiments)
+    }  # Maps experiment names to rows in the plotting
+    colors = {
+        "mc_dropout": "g",
+        "mc_multi": "b",
+        "mc_lang": "r",
+        "mc_vif": "m",
+    }  # Dictionarly to map types of MC to colors for plotting
 
     # Name the risk types in the order by which you added them to the logs
-    risk_types = ['Entropy', 'mutual info', 'STD of softmax', 'Mean of softmax', 'Accuracy']
+    risk_types = [
+        "Entropy",
+        "mutual info",
+        "STD of softmax",
+        "Mean of softmax",
+        "Accuracy",
+    ]
     risk_ylims = [(0.0, 2.0), (0.0, 1.0), (0.0, 0.4), (0.0, 1.0), (0.0, 1.0)]
 
     # Pyplot magic
@@ -80,12 +141,16 @@ def plot_risks():
         table = np.mean(table, axis=-1)
 
         _, name = os.path.split(filename)
-        mutilation_func, mc_type, _, _ = name.split('.')
+        mutilation_func, mc_type, _, _ = name.split(".")
 
         for n in range(1, table.shape[1]):
             # axarr[var2idx[mutilation_func], n-1].scatter(table[:, 0], table[:, n], label=mc_type, c=colors[mc_type], s=5)
-            axarr[var2idx[mutilation_func], n - 1].plot(table[:, 0], table[:, n], label=mc_type, c=colors[mc_type])
-            axarr[var2idx[mutilation_func], n - 1].set_xlabel(dict(conf.func2var_name)[mutilation_func])
+            axarr[var2idx[mutilation_func], n - 1].plot(
+                table[:, 0], table[:, n], label=mc_type, c=colors[mc_type]
+            )
+            axarr[var2idx[mutilation_func], n - 1].set_xlabel(
+                dict(conf.func2var_name)[mutilation_func]
+            )
 
     for axrow in axarr:
         for n_ax, ax in enumerate(axrow):
@@ -100,17 +165,19 @@ def plot_risks():
     # Next lines remove double entries in the legend
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(), bbox_to_anchor=(1.0, 1.1), loc='upper right')
+    plt.legend(
+        by_label.values(), by_label.keys(), bbox_to_anchor=(1.0, 1.1), loc="upper right"
+    )
 
     # Pyplot magic
     plt.subplots_adjust(wspace=0.3, hspace=0.5)
     plt.suptitle(str(var2idx))
-    maybe_make_dir(f'im/{conf.dataset}')
-    plt.savefig(f'im/{conf.dataset}/risks.png')
+    maybe_make_dir(f"im/{conf.dataset}")
+    plt.savefig(f"im/{conf.dataset}/risks.png")
     # plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dl = Dataloader(augment=False)
     main(dl)
     plot_risks()

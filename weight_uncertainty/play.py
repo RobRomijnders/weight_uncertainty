@@ -13,12 +13,24 @@ Simple code to read some images and plot a prediction and its uncertainties
 
 
 def read_images():
-    grid = Image.open('/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/input/grid.png').convert('L')
-    im_array = (np.array(grid).astype(np.float32)-33)/78
+    """
+    Reads images from a grid image and yields them as numpy arrays.
+
+        This method opens a specific PNG file, converts it to grayscale,
+        normalizes the pixel values, and then iterates through a predefined
+        grid pattern extracting 28x28 patches.
+
+        Returns:
+            Generator[np.ndarray]: A generator that yields individual image patches as numpy arrays.
+    """
+    grid = Image.open(
+        "/home/rob/Dropbox/ml_projects/weight_uncertainty/weight_uncertainty/input/grid.png"
+    ).convert("L")
+    im_array = (np.array(grid).astype(np.float32) - 33) / 78
 
     for x_start in [0, 29]:
         for y_start in [0, 29, 58]:
-            yield im_array[y_start:y_start+28, x_start:x_start+28]
+            yield im_array[y_start : y_start + 28, x_start : x_start + 28]
 
 
 batch = np.array(list(read_images()))
@@ -36,12 +48,16 @@ decision = np.argmax(np.mean(pred, axis=0), axis=-1)
 f, axarr = plt.subplots(num_images, 3)
 
 for n, im in enumerate(batch):
-    axarr[n, 0].imshow(im, cmap='gray')
-    axarr[n, 0].set_title(f'prediction {decision[n]}')
-    axarr[n, 1].imshow(np.ones((28, 28)) * entropy[n], cmap='coolwarm', vmin=0.0, vmax=1.6)
-    axarr[n, 1].set_title(f'Entropy{entropy[n]:7.2f}')
-    axarr[n, 2].imshow(np.ones((28, 28)) * mutual_info[n], cmap='coolwarm', vmin=0.0, vmax=1.6)
-    axarr[n, 2].set_title(f'Mutual info {mutual_info[n]:7.3f}')
+    axarr[n, 0].imshow(im, cmap="gray")
+    axarr[n, 0].set_title(f"prediction {decision[n]}")
+    axarr[n, 1].imshow(
+        np.ones((28, 28)) * entropy[n], cmap="coolwarm", vmin=0.0, vmax=1.6
+    )
+    axarr[n, 1].set_title(f"Entropy{entropy[n]:7.2f}")
+    axarr[n, 2].imshow(
+        np.ones((28, 28)) * mutual_info[n], cmap="coolwarm", vmin=0.0, vmax=1.6
+    )
+    axarr[n, 2].set_title(f"Mutual info {mutual_info[n]:7.3f}")
 
 for axrow in axarr:
     for ax in axrow:

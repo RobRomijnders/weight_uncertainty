@@ -9,6 +9,16 @@ import time
 
 
 def train(model, dataloader):
+    """
+    Trains the given model using the provided data loader.
+
+        Args:
+            model: The model to be trained.
+            dataloader: The data loader providing training samples.
+
+        Returns:
+            None
+    """
     # Some tensorflow initializations
     sess = tf.get_default_session()
     train_writer = tf.summary.FileWriter(conf.log_direc)
@@ -17,18 +27,29 @@ def train(model, dataloader):
     try:
         for step in range(conf.max_steps):
             x, y = dataloader.sample()
-            *train_losses, _ = sess.run([model.loss,
-                                         model.kl_loss,
-                                         model.train_op],
-                                        feed_dict={model.x_placeholder: x, model.y_placeholder: y})
+            *train_losses, _ = sess.run(
+                [model.loss, model.kl_loss, model.train_op],
+                feed_dict={model.x_placeholder: x, model.y_placeholder: y},
+            )
 
             if step % 100 == 0:  # every 100 steps, print performances
-                print_validation_performance(step, model, dataloader, train_writer, *train_losses)
+                print_validation_performance(
+                    step, model, dataloader, train_writer, *train_losses
+                )
     finally:
-        model.saver.save(sess, join(conf.log_direc, 'save/my-model'))
+        model.saver.save(sess, join(conf.log_direc, "save/my-model"))
 
 
 def main(dataloader):
+    """
+    Main function to train or test the model.
+
+        Args:
+            dataloader: Provides data loading and batching functionality.
+
+        Returns:
+            None
+    """
     with tf.Session() as sess:
         # Make a model
         model = Model(dataloader.num_classes, dataloader.size_sample)
@@ -36,28 +57,34 @@ def main(dataloader):
 
         do_train = True
         if do_train:  # Set to false if you only want to plot the p_zero's
-            print('Start training')
+            print("Start training")
             train(model, dataloader)
         else:
             model.saver.restore(sess, conf.restore_direc)
             x, y = dataloader.sample()
-            loss_test, kl_loss_test, acc_test = sess.run([model.loss, model.kl_loss, model.accuracy],
-                                                         feed_dict={model.x_placeholder: x, model.y_placeholder: y})
-            print(f'For testing, loss {loss_test:5.3f} kl loss {kl_loss_test:5.3f} and accuracy {acc_test:5.3f}')
+            loss_test, kl_loss_test, acc_test = sess.run(
+                [model.loss, model.kl_loss, model.accuracy],
+                feed_dict={model.x_placeholder: x, model.y_placeholder: y},
+            )
+            print(
+                f"For testing, loss {loss_test:5.3f} kl loss {kl_loss_test:5.3f} and accuracy {acc_test:5.3f}"
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dl = Dataloader(augment=False)
 
     # Maybe make some plots of ucr data
     do_plot = False
     if do_plot and dl.is_time_series:
-            plot_ucr(*dl.sample('train'))
+        plot_ucr(*dl.sample("train"))
 
     # Print data set sizes
-    print(f'train set {dl.data["X_train"].shape[0]}, '
-          f'val set {dl.data["X_val"].shape[0]}, '
-          f'test set {dl.data["X_test"].shape[0]} ')
+    print(
+        f'train set {dl.data["X_train"].shape[0]}, '
+        f'val set {dl.data["X_val"].shape[0]}, '
+        f'test set {dl.data["X_test"].shape[0]} '
+    )
     start_time = time.time()
     main(dl)
-    print(f'Seconds {time.time() - start_time}')
+    print(f"Seconds {time.time() - start_time}")
